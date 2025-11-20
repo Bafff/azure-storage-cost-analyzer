@@ -1,5 +1,11 @@
-# ShellCheck configuration file for Azure Storage Cost Analyzer
-# This file configures which ShellCheck warnings to ignore
+# ShellCheck configuration for Azure Storage Cost Analyzer
+# https://www.shellcheck.net/wiki/
+
+# Set shell dialect (bash is the default)
+shell=bash
+
+# Disable specific checks that are not relevant for this project
+# These warnings are intentional patterns used throughout the codebase
 
 # SC2155: Declare and assign separately to avoid masking return values
 # Rationale: This is a style preference. We use this pattern extensively for readability
