@@ -256,17 +256,17 @@ calculate_date_range() {
             END_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             # Start date: N days ago
-            if command -v gdate &>/dev/null; then
-                # GNU date (Linux, or brew install coreutils on Mac)
-                START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
-            elif date -v-1d &>/dev/null 2>&1; then
-                # BSD date (macOS default)
-                START_DATE="$(date -u -v-${days}d +"%Y-%m-%dT%H:%M:%SZ")"
-            else
-                echo "Error: Unable to calculate dates (date command not supported)" >&2
-                return 1
-            fi
-            ;;
+        if command -v gdate &>/dev/null; then
+            # GNU date (Linux, or brew install coreutils on Mac)
+            START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
+        elif date -v-1d &>/dev/null 2>&1; then
+            # BSD date (macOS default)
+            START_DATE="$(date -u -v-"${days}"d +"%Y-%m-%dT%H:%M:%SZ")"
+        else
+            echo "Error: Unable to calculate dates (date command not supported)" >&2
+            return 1
+        fi
+        ;;
 
         last-month)
             # Previous full month (1st to last day)
@@ -2139,7 +2139,9 @@ lookup_cost() {
     fi
 
     # Use eval to access array by name (bash 3.2 compatible way)
+    # shellcheck disable=SC2154  # dynamic array indirection
     eval "local -a keys=(\"\${${keys_var}[@]}\")"
+    # shellcheck disable=SC2154  # dynamic array indirection
     eval "local -a values=(\"\${${values_var}[@]}\")"
 
     # Convert search ID to lowercase for comparison
@@ -2166,7 +2168,7 @@ sort_by_size_ascending() {
     local size_array_name="${array_names[${#array_names[@]}-1]}"
 
     # Get array length from size array
-    eval "local n=\${#${size_array_name}[@]}"
+    eval "local n=\${#${size_array_name}[@]}"  # shellcheck disable=SC2154
 
     # Bubble sort - swap elements in all arrays simultaneously
     for ((i=0; i<n-1; i++)); do
@@ -2174,7 +2176,9 @@ sort_by_size_ascending() {
             local k=$((j+1))
 
             # Get sizes to compare
+            # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_j=\${${size_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_k=\${${size_array_name}[$k]}"
 
             # Compare sizes (ascending order)
@@ -2208,10 +2212,10 @@ sort_by_rg_then_size() {
             local k=$((j+1))
 
             # Get RGs and sizes to compare
-            eval "local rg_j=\${${rg_array_name}[$j]}"
-            eval "local rg_k=\${${rg_array_name}[$k]}"
-            eval "local size_j=\${${size_array_name}[$j]}"
-            eval "local size_k=\${${size_array_name}[$k]}"
+            eval "local rg_j=\${${rg_array_name}[$j]}"   # shellcheck disable=SC2154
+            eval "local rg_k=\${${rg_array_name}[$k]}"   # shellcheck disable=SC2154
+            eval "local size_j=\${${size_array_name}[$j]}" # shellcheck disable=SC2154
+            eval "local size_k=\${${size_array_name}[$k]}" # shellcheck disable=SC2154
 
             local should_swap=false
 
@@ -2245,7 +2249,7 @@ sort_by_created_date() {
     local date_array_name="${array_names[${#array_names[@]}-1]}"
 
     # Get array length from date array
-    eval "local n=\${#${date_array_name}[@]}"
+    eval "local n=\${#${date_array_name}[@]}"  # shellcheck disable=SC2154
 
     # Bubble sort - swap elements in all arrays simultaneously
     for ((i=0; i<n-1; i++)); do
@@ -2253,8 +2257,8 @@ sort_by_created_date() {
             local k=$((j+1))
 
             # Get dates to compare (ISO format: YYYY-MM-DD allows string comparison)
-            eval "local date_j=\${${date_array_name}[$j]}"
-            eval "local date_k=\${${date_array_name}[$k]}"
+            eval "local date_j=\${${date_array_name}[$j]}" # shellcheck disable=SC2154
+            eval "local date_k=\${${date_array_name}[$k]}" # shellcheck disable=SC2154
 
             # Compare dates (ascending order: oldest first)
             # String comparison works for ISO dates (YYYY-MM-DD)
@@ -2780,7 +2784,7 @@ analyze_unattached_disks_only() {
         echo "" | tee -a "$output_file"
 
         # Generate separator line of appropriate length
-        local rg_separator=$(printf '%0.s-' $(seq 1 $max_rg_len))
+        local rg_separator=$(printf '%0.s-' $(seq 1 "$max_rg_len"))
 
         # Print header with or without State column (using dynamic RG width)
         if [[ "$include_attached" == "true" ]]; then
@@ -3083,7 +3087,7 @@ generate_unused_resources_report() {
         echo "" | tee -a "$output_file"
 
         # Generate separator line of appropriate length
-        local rg_separator=$(printf '%0.s-' $(seq 1 $max_rg_len))
+        local rg_separator=$(printf '%0.s-' $(seq 1 "$max_rg_len"))
 
         # Print header with or without State column (using dynamic RG width)
         if [[ "$include_attached" == "true" ]]; then
