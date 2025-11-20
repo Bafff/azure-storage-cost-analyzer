@@ -1,0 +1,136 @@
+# Azure Storage Monitor Configuration File
+# Copy this file to one of the following locations (in priority order):
+#   1. Specify with --config <path>
+#   2. /etc/azure-storage-monitor/config.conf (system-wide)
+#   3. ~/.azure-storage-monitor.conf (user-specific)
+#   4. ./azure-storage-monitor.conf (local directory)
+
+[azure]
+# Azure subscriptions to scan
+# Use "all" for all accessible subscriptions, or comma-separated list of subscription IDs
+subscriptions = all
+# Example with specific subscriptions:
+# subscriptions = 2f929c0a-d1f4-480c-a610-f75d1862fd53, 03d76f78-4676-4116-b53a-162546996207
+
+# Resource group filter (optional, empty = all resource groups)
+resource_group =
+
+# Date range for cost analysis (in days from now)
+# Example: 30 means analyze last 30 days
+date_range_days = 30
+
+# Include attached disks in analysis (true/false)
+include_attached = false
+
+[output]
+# Output format: json, zabbix, text, csv
+format = json
+
+# Output file path (if saving to file)
+# Supports strftime format codes: %Y, %m, %d, %H, %M, %S
+file_path = /var/log/azure-monitor/report-%Y%m%d-%H%M%S.json
+
+# Verbosity: silent, quiet, normal, verbose, debug
+verbosity = quiet
+
+[zabbix]
+# Enable Zabbix integration (true/false)
+enabled = true
+
+# Zabbix server configuration
+server = monitoring.company.com
+port = 10051
+hostname = azure-storage-monitor
+
+# Auto-send metrics to Zabbix (true/false)
+auto_send = true
+
+# Zabbix agentd config file (alternative to server/port)
+# config_file = /etc/zabbix/zabbix_agentd.conf
+
+[thresholds]
+# Warning threshold (monthly cost in USD)
+warning_monthly = 50.00
+
+# Critical threshold (monthly cost in USD)
+critical_monthly = 100.00
+
+# Alert on disk count thresholds
+warning_disk_count = 10
+critical_disk_count = 20
+
+[logging]
+# Log file path
+file = /var/log/azure-monitor/azure-storage-monitor.log
+
+# Log level: debug, info, warn, error
+level = info
+
+# Enable syslog (true/false)
+syslog = false
+
+# Syslog facility
+syslog_facility = local0
+
+[advanced]
+# Cache directory for API responses
+cache_dir = /var/cache/azure-monitor
+
+# Cache TTL in seconds (0 = disable cache)
+cache_ttl = 3600
+
+# Retry count for failed API calls
+retry_count = 3
+
+# Retry delay in seconds
+retry_delay = 5
+
+# Sort order: size, rg, date
+sort_by = size
+
+[exclusions]
+# ============================================================================
+# REVIEW DATE TAG EXCLUSION (Approved Exceptions)
+# ============================================================================
+# Resources with this tag and a future date will be excluded from alerts
+# until the review date is reached
+
+# Tag name to check on resources
+review_date_tag_name = Resource-Next-Review-Date
+
+# Expected date format (strict validation)
+review_date_format = YYYY.MM.DD
+
+# Exclude resources with valid future review dates from alerts
+# true = exclude from metrics/alerts until review date
+# false = show all resources with tag status annotations
+exclude_pending_review = true
+
+# Example tag usage on Azure resources:
+#   Resource-Next-Review-Date: 2025.12.30  → Excluded until Dec 30, 2025
+#   Resource-Next-Review-Date: 2024.11.01  → Included (review overdue)
+#   Resource-Next-Review-Date: approved    → Included + flagged as invalid tag
+
+# Note: Resources with expired tags (past dates) are ALWAYS included in alerts
+# as the review date has passed and needs attention.
+
+# ============================================================================
+# LAYER 1: Azure Tag Filtering (Static Resources)
+# ============================================================================
+# Disks with these tags will be completely excluded from reports
+# Format: tag1:value1, tag2:value2
+exclude_tags = monitoring:exclude, keep-unattached:true, reserved:disk
+
+# ============================================================================
+# LAYER 2: Name Pattern Filtering (Dynamic Resources)
+# ============================================================================
+# Exclude disks matching these name patterns (regex)
+# Typically for dynamic resources (Databricks, CI/CD, autoscaling, etc.)
+exclude_patterns = ^databricks-.*$, ^worker-.*$, ^temp-.*$, ^ci-build-.*$, ^spark-worker-.*$
+
+# ============================================================================
+# LAYER 3: Age-Based Filtering (Unknown Dynamic Resources)
+# ============================================================================
+# Minimum age in days before alerting on unattached disks
+# Helps avoid false alerts for resources in creation/deletion cycles
+min_age_days = 7

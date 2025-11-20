@@ -1,0 +1,185 @@
+# Azure Storage Cost Monitor Pipeline
+# This pipeline scans all Azure subscriptions for storage waste and sends metrics to Zabbix
+#
+# Schedule: Daily at 2 AM UTC (configurable)
+# Trigger: Manual or scheduled
+#
+# Prerequisites:
+#   1. Azure service connection with Reader access to all subscriptions
+#   2. Variable group 'zabbix-rs-credentials' with ZABBIX_SERVER variable
+#   3. Zabbix server accessible on port 10051 from Azure DevOps agents
+#   4. Zabbix host 'azure-storage-monitor' configured with template
+
+name: Azure-Storage-Waste-Monitor-$(Date:yyyyMMdd)-$(Rev:r)
+
+trigger: none  # Disable CI triggers (manual or scheduled only)
+
+schedules:
+  - cron: "0 2 * * *"  # Daily at 2 AM UTC
+    displayName: 'Daily Storage Cost Analysis'
+    branches:
+      include:
+        - master
+        - feature/azure-storage-cost-analyzer-migration
+    always: true  # Run even if no code changes
+
+pool:
+  vmImage: 'ubuntu-latest'  # Ubuntu agents have Azure CLI pre-installed
+
+variables:
+  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
+  - name: ZABBIX_HOST
+    value: 'azure-storage-monitor'
+  - name: SCAN_DAYS
+    value: 30  # Analyze last 30 days
+  - name: OUTPUT_DIR
+    value: '$(Build.ArtifactStagingDirectory)/reports'
+
+stages:
+  - stage: Analyze
+    displayName: 'Azure Storage Cost Analysis'
+    jobs:
+      - job: ScanAllSubscriptions
+        displayName: 'Scan All Azure Subscriptions'
+        timeoutInMinutes: 30  # Adjust based on number of subscriptions
+
+        steps:
+          - checkout: self
+            displayName: 'Checkout repository'
+            clean: true
+
+          - task: Bash@3
+            displayName: 'Install dependencies'
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "Installing required packages..."
+                sudo apt-get update -qq
+                sudo apt-get install -y zabbix-sender jq bc coreutils
+
+                echo "Verifying installations..."
+                zabbix_sender --version
+                jq --version
+                bc --version
+
+                echo "Dependencies installed successfully"
+
+          - task: Bash@3
+            displayName: 'Verify script permissions'
+            inputs:
+              targetType: 'inline'
+              script: |
+                chmod +x azure-storage-cost-analysis-enhanced.sh
+                ls -la azure-storage-cost-analysis-enhanced.sh
+
+          - task: AzureCLI@2
+            displayName: 'Run Storage Cost Analysis'
+            inputs:
+              # NOTE: This is your Azure DevOps SERVICE CONNECTION name (NOT an Azure subscription ID)
+              # The script will scan ALL Azure subscriptions that this service connection has access to
+              # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
+              azureSubscription: 'Azure-Service-Connection'  # ⚠️ UPDATE THIS to your service connection name
+              scriptType: 'bash'
+              scriptLocation: 'scriptPath'
+              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analysis-enhanced.sh'
+              arguments: |
+                unused-report \
+                --subscriptions all \
+                --days $(SCAN_DAYS) \
+                --output-format json \
+                --zabbix-send \
+                --zabbix-server $(ZABBIX_SERVER) \
+                --zabbix-host $(ZABBIX_HOST) \
+                --zabbix-port 10051 \
+                --quiet
+              workingDirectory: '$(Build.SourcesDirectory)'
+              failOnStandardError: false  # Don't fail on warnings
+            env:
+              AZURE_CLI_TIMEOUT: 300  # 5 minutes timeout for Azure CLI commands
+            continueOnError: true  # Continue even if some subscriptions fail
+            condition: succeeded()
+
+          - task: Bash@3
+            displayName: 'Save JSON report artifact'
+            condition: always()
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Create output directory
+                mkdir -p $(OUTPUT_DIR)
+
+                # Copy any generated JSON reports
+                if ls *.json 1> /dev/null 2>&1; then
+                  cp *.json $(OUTPUT_DIR)/
+                  echo "JSON reports copied to artifacts"
+                  ls -lh $(OUTPUT_DIR)/
+                else
+                  echo "No JSON reports found"
+                fi
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish storage cost reports'
+            condition: always()
+            inputs:
+              PathtoPublish: '$(OUTPUT_DIR)'
+              ArtifactName: 'storage-cost-reports-$(Build.BuildNumber)'
+              publishLocation: 'Container'
+
+          - task: Bash@3
+            displayName: 'Summary Report'
+            condition: always()
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "========================================"
+                echo "Azure Storage Cost Analysis Complete"
+                echo "========================================"
+                echo "Build Number: $(Build.BuildNumber)"
+                echo "Run Date: $(date)"
+                echo "Zabbix Server: $(ZABBIX_SERVER)"
+                echo "Zabbix Host: $(ZABBIX_HOST)"
+                echo "Scan Period: Last $(SCAN_DAYS) days"
+                echo "========================================"
+
+                # Show quick summary if JSON exists
+                if [ -f "unused-resources-report-*.json" ]; then
+                  echo ""
+                  echo "Quick Summary:"
+                  jq -r '"Total Waste: $\(.aggregated_metrics.total_waste_monthly_usd)/month (\(.aggregated_metrics.total_waste_annual_usd)/year)\nUnattached Disks: \(.aggregated_metrics.total_unattached_disks)\nSnapshots: \(.aggregated_metrics.total_snapshots)\nSubscriptions: \(.subscriptions_scanned)"' unused-resources-report-*.json || true
+                fi
+
+# Alternative: Single subscription scan (uncomment if needed)
+#      - job: ScanSingleSubscription
+#        displayName: 'Scan Specific Subscription'
+#        variables:
+#          SUBSCRIPTION_ID: 'your-subscription-id-here'
+#        steps:
+#          - task: AzureCLI@2
+#            displayName: 'Run Analysis'
+#            inputs:
+#              azureSubscription: 'Azure-Service-Connection'
+#              scriptType: 'bash'
+#              scriptLocation: 'scriptPath'
+#              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analysis-enhanced.sh'
+#              arguments: |
+#                unused-report \
+#                --subscriptions $(SUBSCRIPTION_ID) \
+#                --days $(SCAN_DAYS) \
+#                --output-format json \
+#                --zabbix-send \
+#                --zabbix-server $(ZABBIX_SERVER) \
+#                --zabbix-host $(ZABBIX_HOST)
+
+# Optional: Notification on failure
+#  - stage: Notify
+#    displayName: 'Send Notifications'
+#    dependsOn: Analyze
+#    condition: failed()
+#    jobs:
+#      - job: NotifyTeam
+#        steps:
+#          - task: SendEmail@1  # Requires email extension
+#            inputs:
+#              To: 'devops-team@company.com'
+#              Subject: 'Azure Storage Cost Analysis Failed'
+#              Body: 'Pipeline $(Build.BuildNumber) failed. Check logs for details.'

@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>7.0</version>
+    <template_groups>
+        <template_group>
+            <uuid>7df96b18f2304952b5c3a7c1c2e4c5e1</uuid>
+            <name>Templates/Cloud</name>
+        </template_group>
+    </template_groups>
+    <templates>
+        <template>
+            <uuid>a1b2c3d4e5f6789012345678901234ab</uuid>
+            <template>Azure Storage Cost Monitor</template>
+            <name>Azure Storage Cost Monitor</name>
+            <description>Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
+
+Script: azure-storage-cost-analysis-enhanced.sh
+Version: 1.0
+Compatible: Zabbix 7.0.5+
+
+Usage:
+  ./azure-storage-cost-analysis-enhanced.sh unused-report \
+    --subscriptions all \
+    --days 30 \
+    --output-format json \
+    --zabbix-send \
+    --zabbix-server your-zabbix-server.com \
+    --zabbix-host azure-storage-monitor
+</description>
+            <groups>
+                <group>
+                    <name>Templates/Cloud</name>
+                </group>
+            </groups>
+            <items>
+                <!-- Aggregated Metrics -->
+                <item>
+                    <uuid>b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6</uuid>
+                    <name>Total Monthly Waste (All Subscriptions)</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_waste.monthly</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>FLOAT</value_type>
+                    <units>USD</units>
+                    <description>Total monthly cost of unattached disks and snapshots across all Azure subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                        <tag>
+                            <tag>cloud</tag>
+                            <value>azure</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7</uuid>
+                    <name>Total Unattached Disks Count</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_disks</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>disks</units>
+                    <description>Total number of unattached disks across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8</uuid>
+                    <name>Total Snapshots Count</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_snapshots</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>snapshots</units>
+                    <description>Total number of snapshots across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9</uuid>
+                    <name>Subscriptions Scanned</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.subscriptions_scanned</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of Azure subscriptions scanned in last run</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+
+                <!-- Script Execution Metrics -->
+                <item>
+                    <uuid>f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0</uuid>
+                    <name>Last Run Timestamp</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.last_run_timestamp</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <value_type>UNSIGNED</value_type>
+                    <units>unixtime</units>
+                    <description>Unix timestamp of last successful script execution</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1</uuid>
+                    <name>Script Execution Time</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.execution_time_seconds</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>s</units>
+                    <description>Script execution duration in seconds</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>performance</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2</uuid>
+                    <name>Last Run Status</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.last_run_status</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Script execution status (0=success, 1=warning, 2=error)</description>
+                    <valuemap>
+                        <name>Script Status</name>
+                    </valuemap>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+            </items>
+
+            <discovery_rules>
+                <!-- Low-Level Discovery for Subscriptions -->
+                <discovery_rule>
+                    <uuid>c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3</uuid>
+                    <name>Azure Subscriptions Discovery</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.discovery.subscriptions</key>
+                    <delay>1h</delay>
+                    <lifetime>7d</lifetime>
+                    <description>Discovers Azure subscriptions for per-subscription monitoring</description>
+                    <item_prototypes>
+                        <item_prototype>
+                            <uuid>d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4</uuid>
+                            <name>Subscription [{#SUBSCRIPTION_NAME}]: Monthly Waste</name>
+                            <type>ZABBIX_ACTIVE</type>
+                            <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly</key>
+                            <delay>0</delay>
+                            <history>90d</history>
+                            <trends>365d</trends>
+                            <value_type>FLOAT</value_type>
+                            <units>USD</units>
+                            <description>Monthly waste for subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>subscription</tag>
+                                    <value>{#SUBSCRIPTION_NAME}</value>
+                                </tag>
+                            </tags>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5</uuid>
+                            <name>Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks</name>
+                            <type>ZABBIX_ACTIVE</type>
+                            <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count</key>
+                            <delay>0</delay>
+                            <history>90d</history>
+                            <trends>365d</trends>
+                            <value_type>UNSIGNED</value_type>
+                            <units>disks</units>
+                            <description>Unattached disks in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>subscription</tag>
+                                    <value>{#SUBSCRIPTION_NAME}</value>
+                                </tag>
+                            </tags>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6</uuid>
+                            <name>Subscription [{#SUBSCRIPTION_NAME}]: Snapshots</name>
+                            <type>ZABBIX_ACTIVE</type>
+                            <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].snapshot_count</key>
+                            <delay>0</delay>
+                            <history>90d</history>
+                            <trends>365d</trends>
+                            <value_type>UNSIGNED</value_type>
+                            <units>snapshots</units>
+                            <description>Snapshots in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>subscription</tag>
+                                    <value>{#SUBSCRIPTION_NAME}</value>
+                                </tag>
+                            </tags>
+                        </item_prototype>
+                    </item_prototypes>
+                    <trigger_prototypes>
+                        <trigger_prototype>
+                            <uuid>a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7</uuid>
+                            <expression>last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly)&gt;100</expression>
+                            <name>High storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}</name>
+                            <priority>WARNING</priority>
+                            <description>Monthly storage waste exceeds $100 in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>scope</tag>
+                                    <value>cost</value>
+                                </tag>
+                            </tags>
+                        </trigger_prototype>
+                        <trigger_prototype>
+                            <uuid>b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8</uuid>
+                            <expression>last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly)&gt;250</expression>
+                            <name>Critical storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}</name>
+                            <priority>HIGH</priority>
+                            <description>Monthly storage waste exceeds $250 in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>scope</tag>
+                                    <value>cost</value>
+                                </tag>
+                            </tags>
+                        </trigger_prototype>
+                        <trigger_prototype>
+                            <uuid>c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9</uuid>
+                            <expression>last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count)&gt;20</expression>
+                            <name>Many unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}</name>
+                            <priority>WARNING</priority>
+                            <description>More than 20 unattached disks found in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>scope</tag>
+                                    <value>resources</value>
+                                </tag>
+                            </tags>
+                        </trigger_prototype>
+                    </trigger_prototypes>
+                </discovery_rule>
+            </discovery_rules>
+
+            <triggers>
+                <!-- Aggregated Triggers -->
+                <trigger>
+                    <uuid>d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0</uuid>
+                    <expression>last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)&gt;500</expression>
+                    <name>High total Azure storage waste: ${ITEM.LASTVALUE}</name>
+                    <priority>WARNING</priority>
+                    <description>Total monthly storage waste across all subscriptions exceeds $500</description>
+                    <tags>
+                        <tag>
+                            <tag>scope</tag>
+                            <value>cost</value>
+                        </tag>
+                        <tag>
+                            <tag>cloud</tag>
+                            <value>azure</value>
+                        </tag>
+                    </tags>
+                </trigger>
+                <trigger>
+                    <uuid>e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1</uuid>
+                    <expression>last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)&gt;1000</expression>
+                    <name>Critical total Azure storage waste: ${ITEM.LASTVALUE}</name>
+                    <priority>HIGH</priority>
+                    <description>Total monthly storage waste across all subscriptions exceeds $1000</description>
+                    <tags>
+                        <tag>
+                            <tag>scope</tag>
+                            <value>cost</value>
+                        </tag>
+                        <tag>
+                            <tag>cloud</tag>
+                            <value>azure</value>
+                        </tag>
+                    </tags>
+                </trigger>
+                <trigger>
+                    <uuid>f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2</uuid>
+                    <expression>now()-last(/Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)&gt;86400</expression>
+                    <name>Azure storage monitor script hasn't run in 24 hours</name>
+                    <priority>AVERAGE</priority>
+                    <description>The Azure storage cost analysis script hasn't reported data in over 24 hours</description>
+                    <tags>
+                        <tag>
+                            <tag>scope</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </trigger>
+                <trigger>
+                    <uuid>a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3</uuid>
+                    <expression>last(/Azure Storage Cost Monitor/azure.storage.script.last_run_status)&gt;0</expression>
+                    <name>Azure storage monitor script execution failed</name>
+                    <priority>WARNING</priority>
+                    <description>Last execution of Azure storage cost analysis script reported errors</description>
+                    <tags>
+                        <tag>
+                            <tag>scope</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </trigger>
+            </triggers>
+
+            <valuemaps>
+                <valuemap>
+                    <uuid>b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4</uuid>
+                    <name>Script Status</name>
+                    <mappings>
+                        <mapping>
+                            <value>0</value>
+                            <newvalue>Success</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>1</value>
+                            <newvalue>Warning</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>2</value>
+                            <newvalue>Error</newvalue>
+                        </mapping>
+                    </mappings>
+                </valuemap>
+            </valuemaps>
+        </template>
+    </templates>
+</zabbix_export>

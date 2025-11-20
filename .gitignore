@@ -1,0 +1,33 @@
+# Test outputs and reports
+*.json
+*.txt
+!*.example.*
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache (if we add Python tools later)
+__pycache__/
+*.py[cod]
+
+# Environment files
+.env
+.env.local
+config.conf
+
+# Keep example files
+!azure-storage-monitor.conf.example
