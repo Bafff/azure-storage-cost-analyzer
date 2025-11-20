@@ -26,10 +26,6 @@ include_attached = false
 # Output format: json, zabbix, text, csv
 format = json
 
-# Output file path (if saving to file)
-# Supports strftime format codes: %Y, %m, %d, %H, %M, %S
-file_path = /var/log/azure-monitor/report-%Y%m%d-%H%M%S.json
-
 # Verbosity: silent, quiet, normal, verbose, debug
 verbosity = quiet
 
@@ -59,32 +55,7 @@ critical_monthly = 100.00
 warning_disk_count = 10
 critical_disk_count = 20
 
-[logging]
-# Log file path
-file = /var/log/azure-monitor/azure-storage-monitor.log
-
-# Log level: debug, info, warn, error
-level = info
-
-# Enable syslog (true/false)
-syslog = false
-
-# Syslog facility
-syslog_facility = local0
-
 [advanced]
-# Cache directory for API responses
-cache_dir = /var/cache/azure-monitor
-
-# Cache TTL in seconds (0 = disable cache)
-cache_ttl = 3600
-
-# Retry count for failed API calls
-retry_count = 3
-
-# Retry delay in seconds
-retry_delay = 5
-
 # Sort order: size, rg, date
 sort_by = size
 
@@ -115,22 +86,3 @@ exclude_pending_review = true
 # as the review date has passed and needs attention.
 
 # ============================================================================
-# LAYER 1: Azure Tag Filtering (Static Resources)
-# ============================================================================
-# Disks with these tags will be completely excluded from reports
-# Format: tag1:value1, tag2:value2
-exclude_tags = monitoring:exclude, keep-unattached:true, reserved:disk
-
-# ============================================================================
-# LAYER 2: Name Pattern Filtering (Dynamic Resources)
-# ============================================================================
-# Exclude disks matching these name patterns (regex)
-# Typically for dynamic resources (Databricks, CI/CD, autoscaling, etc.)
-exclude_patterns = ^databricks-.*$, ^worker-.*$, ^temp-.*$, ^ci-build-.*$, ^spark-worker-.*$
-
-# ============================================================================
-# LAYER 3: Age-Based Filtering (Unknown Dynamic Resources)
-# ============================================================================
-# Minimum age in days before alerting on unattached disks
-# Helps avoid false alerts for resources in creation/deletion cycles
-min_age_days = 7

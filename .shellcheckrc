@@ -48,4 +48,4 @@ shell=bash
 # SC1090: ShellCheck can't follow non-constant source
 # Rationale: Test scripts source files dynamically, which is intentional
 
-disable=SC2155,SC2034,SC2001,SC2086,SC2207,SC2188,SC2129,SC2154,SC2184,SC2164,SC2317,SC1090
+disable=SC2155,SC2034,SC2001,SC2207,SC2188,SC2129,SC2184,SC2164,SC2317,SC1090

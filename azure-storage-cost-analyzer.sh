@@ -32,7 +32,6 @@ CONFIG_RESOURCE_GROUP=""
 CONFIG_DATE_RANGE_DAYS=""
 CONFIG_INCLUDE_ATTACHED=""
 CONFIG_OUTPUT_FORMAT=""
-CONFIG_OUTPUT_FILE_PATH=""
 CONFIG_VERBOSITY=""
 CONFIG_ZABBIX_ENABLED=""
 CONFIG_ZABBIX_SERVER=""
@@ -43,16 +42,7 @@ CONFIG_THRESHOLD_WARNING_MONTHLY=""
 CONFIG_THRESHOLD_CRITICAL_MONTHLY=""
 CONFIG_THRESHOLD_WARNING_DISK_COUNT=""
 CONFIG_THRESHOLD_CRITICAL_DISK_COUNT=""
-CONFIG_LOG_FILE=""
-CONFIG_LOG_LEVEL=""
-CONFIG_SYSLOG=""
-CONFIG_SYSLOG_FACILITY=""
-CONFIG_RETRY_COUNT=""
-CONFIG_RETRY_DELAY=""
 CONFIG_SORT_BY=""
-CONFIG_EXCLUDE_TAGS=""
-CONFIG_EXCLUDE_PATTERNS=""
-CONFIG_MIN_AGE_DAYS=""
 CONFIG_REVIEW_DATE_TAG_NAME=""
 CONFIG_REVIEW_DATE_FORMAT=""
 CONFIG_EXCLUDE_PENDING_REVIEW=""
@@ -597,7 +587,6 @@ parse_config_file() {
                 output)
                     case "$key" in
                         format) CONFIG_OUTPUT_FORMAT="$value" ;;
-                        file_path) CONFIG_OUTPUT_FILE_PATH="$value" ;;
                         verbosity) CONFIG_VERBOSITY="$value" ;;
                     esac
                     ;;
@@ -618,26 +607,13 @@ parse_config_file() {
                         critical_disk_count) CONFIG_THRESHOLD_CRITICAL_DISK_COUNT="$value" ;;
                     esac
                     ;;
-                logging)
-                    case "$key" in
-                        file) CONFIG_LOG_FILE="$value" ;;
-                        level) CONFIG_LOG_LEVEL="$value" ;;
-                        syslog) CONFIG_SYSLOG="$value" ;;
-                        syslog_facility) CONFIG_SYSLOG_FACILITY="$value" ;;
-                    esac
-                    ;;
                 advanced)
                     case "$key" in
-                        retry_count) CONFIG_RETRY_COUNT="$value" ;;
-                        retry_delay) CONFIG_RETRY_DELAY="$value" ;;
                         sort_by) CONFIG_SORT_BY="$value" ;;
                     esac
                     ;;
                 exclusions)
                     case "$key" in
-                        exclude_tags) CONFIG_EXCLUDE_TAGS="$value" ;;
-                        exclude_patterns) CONFIG_EXCLUDE_PATTERNS="$value" ;;
-                        min_age_days) CONFIG_MIN_AGE_DAYS="$value" ;;
                         review_date_tag_name) CONFIG_REVIEW_DATE_TAG_NAME="$value" ;;
                         review_date_format) CONFIG_REVIEW_DATE_FORMAT="$value" ;;
                         exclude_pending_review) CONFIG_EXCLUDE_PENDING_REVIEW="$value" ;;
