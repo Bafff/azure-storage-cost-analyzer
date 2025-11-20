@@ -3113,9 +3113,9 @@ generate_unused_resources_report() {
         echo "" | tee -a "$output_file"
 
         # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
-            local invalid_count=$(echo "$tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+        if [[ -n "$tag_name" && -n "$disk_tag_filter_stats" ]]; then
+            local excluded_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+            local invalid_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
 
             if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
                 echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
