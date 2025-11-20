@@ -6,29 +6,29 @@ This directory contains automation scripts for Sentry PostgreSQL maintenance ope
 
 ### Azure Storage Cost Analysis
 
-#### `azure-storage-cost-analysis-enhanced.sh` ⭐ **RECOMMENDED**
+#### `azure-storage-cost-analyzer.sh` ⭐ **RECOMMENDED**
 **Enhanced Script** - Flexible cost analysis for any Azure resources (disks, snapshots, bulk analysis).
 
 **Usage:**
 ```bash
 # Make executable (first time)
-chmod +x azure-storage-cost-analysis-enhanced.sh
+chmod +x azure-storage-cost-analyzer.sh
 
 # Analyze specific disk by name (auto-expands to full resource ID)
-./azure-storage-cost-analysis-enhanced.sh pvc-596782ff-6859-4334-992c-fa519fa2f501 "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh pvc-596782ff-6859-4334-992c-fa519fa2f501 "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
 
 # Analyze ALL disks in subscription
-./azure-storage-cost-analysis-enhanced.sh all-disks "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh all-disks "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
 
 # Analyze ALL snapshots in subscription  
-./azure-storage-cost-analysis-enhanced.sh all-snapshots "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh all-snapshots "" "2025-08-01T00:00:00+00:00" "2025-08-31T23:59:59+00:00"
 
 # List available resources (no cost analysis)
-./azure-storage-cost-analysis-enhanced.sh list-disks
-./azure-storage-cost-analysis-enhanced.sh list-snapshots
+./azure-storage-cost-analyzer.sh list-disks
+./azure-storage-cost-analyzer.sh list-snapshots
 
 # Historical 6-month analysis (PostgreSQL disk)
-./azure-storage-cost-analysis-enhanced.sh historical
+./azure-storage-cost-analyzer.sh historical
 ```
 
 #### `azure-storage-cost-analysis.sh` 

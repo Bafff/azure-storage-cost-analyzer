@@ -2,7 +2,7 @@
 
 ## Overview
 
-The enhanced `azure-storage-cost-analysis-enhanced.sh` script now includes functionality to identify and report on unused Azure storage resources (unattached disks and snapshots) with their associated costs.
+The enhanced `azure-storage-cost-analyzer.sh` script now includes functionality to identify and report on unused Azure storage resources (unattached disks and snapshots) with their associated costs.
 
 ## Key Features
 
@@ -27,7 +27,7 @@ The enhanced `azure-storage-cost-analysis-enhanced.sh` script now includes funct
 ### Generate Unused Resources Report
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh unused-report "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
 ```
 
 **Parameters:**
@@ -40,16 +40,16 @@ The enhanced `azure-storage-cost-analysis-enhanced.sh` script now includes funct
 
 ```bash
 # For September 2025
-./azure-storage-cost-analysis-enhanced.sh unused-report "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh unused-report "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
 
 # For October 2025
-./azure-storage-cost-analysis-enhanced.sh unused-report "" "2025-10-01T00:00:00+00:00" "2025-10-31T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh unused-report "" "2025-10-01T00:00:00+00:00" "2025-10-31T23:59:59+00:00"
 ```
 
 ### Alternative: Specific Subscription
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report "YOUR-SUBSCRIPTION-ID" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh unused-report "YOUR-SUBSCRIPTION-ID" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
 ```
 
 ## Report Sections
@@ -303,7 +303,7 @@ Consider adding this to your cost optimization pipeline:
 CURRENT_MONTH_START="$(date -u +%Y-%m-01T00:00:00+00:00)"
 CURRENT_MONTH_END="$(date -u +%Y-%m-%dT23:59:59+00:00)"
 
-./azure-storage-cost-analysis-enhanced.sh unused-report "" "$CURRENT_MONTH_START" "$CURRENT_MONTH_END"
+./azure-storage-cost-analyzer.sh unused-report "" "$CURRENT_MONTH_START" "$CURRENT_MONTH_END"
 
 # Send report to team via email or Slack
 # Trigger approval workflow if savings > $X threshold
@@ -322,19 +322,19 @@ CURRENT_MONTH_END="$(date -u +%Y-%m-%dT23:59:59+00:00)"
 
 ```bash
 # List all disks (no cost analysis)
-./azure-storage-cost-analysis-enhanced.sh list-disks
+./azure-storage-cost-analyzer.sh list-disks
 
 # List all snapshots (no cost analysis)
-./azure-storage-cost-analysis-enhanced.sh list-snapshots
+./azure-storage-cost-analyzer.sh list-snapshots
 
 # Analyze specific disk costs
-./azure-storage-cost-analysis-enhanced.sh pvc-596782ff-6859-4334-992c-fa519fa2f501 "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh pvc-596782ff-6859-4334-992c-fa519fa2f501 "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
 
 # Analyze all disks with costs
-./azure-storage-cost-analysis-enhanced.sh all-disks "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
+./azure-storage-cost-analyzer.sh all-disks "" "2025-09-01T00:00:00+00:00" "2025-09-30T23:59:59+00:00"
 
 # Historical 6-month analysis of PostgreSQL disk
-./azure-storage-cost-analysis-enhanced.sh historical
+./azure-storage-cost-analyzer.sh historical
 ```
 
 ---

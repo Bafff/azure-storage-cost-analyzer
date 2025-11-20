@@ -14,12 +14,12 @@
             <name>Azure Storage Cost Monitor</name>
             <description>Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
 
-Script: azure-storage-cost-analysis-enhanced.sh
+Script: azure-storage-cost-analyzer.sh
 Version: 1.0
 Compatible: Zabbix 7.0.5+
 
 Usage:
-  ./azure-storage-cost-analysis-enhanced.sh unused-report \
+  ./azure-storage-cost-analyzer.sh unused-report \
     --subscriptions all \
     --days 30 \
     --output-format json \
@@ -106,6 +106,50 @@ Usage:
                         <tag>
                             <tag>component</tag>
                             <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6</uuid>
+                    <name>Total Invalid Review Tags</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.invalid_tags</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>tags</units>
+                    <description>Number of resources with malformed review date tags across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                        <tag>
+                            <tag>type</tag>
+                            <value>tag-management</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7</uuid>
+                    <name>Resources Excluded (Pending Review)</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.excluded_pending_review</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>resources</units>
+                    <description>Resources excluded due to valid future review dates across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                        <tag>
+                            <tag>type</tag>
+                            <value>tag-management</value>
                         </tag>
                     </tags>
                 </item>
@@ -232,6 +276,50 @@ Usage:
                                 </tag>
                             </tags>
                         </item_prototype>
+                        <item_prototype>
+                            <uuid>f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9</uuid>
+                            <name>Subscription [{#SUBSCRIPTION_NAME}]: Invalid Tags</name>
+                            <type>ZABBIX_ACTIVE</type>
+                            <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].invalid_tags</key>
+                            <delay>0</delay>
+                            <history>90d</history>
+                            <trends>365d</trends>
+                            <value_type>UNSIGNED</value_type>
+                            <units>tags</units>
+                            <description>Resources with malformed review date tags in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>subscription</tag>
+                                    <value>{#SUBSCRIPTION_NAME}</value>
+                                </tag>
+                                <tag>
+                                    <tag>type</tag>
+                                    <value>tag-management</value>
+                                </tag>
+                            </tags>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0</uuid>
+                            <name>Subscription [{#SUBSCRIPTION_NAME}]: Excluded Pending Review</name>
+                            <type>ZABBIX_ACTIVE</type>
+                            <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].excluded_pending_review</key>
+                            <delay>0</delay>
+                            <history>90d</history>
+                            <trends>365d</trends>
+                            <value_type>UNSIGNED</value_type>
+                            <units>resources</units>
+                            <description>Resources excluded due to valid future review dates in subscription {#SUBSCRIPTION_NAME}</description>
+                            <tags>
+                                <tag>
+                                    <tag>subscription</tag>
+                                    <value>{#SUBSCRIPTION_NAME}</value>
+                                </tag>
+                                <tag>
+                                    <tag>type</tag>
+                                    <value>tag-management</value>
+                                </tag>
+                            </tags>
+                        </item_prototype>
                     </item_prototypes>
                     <trigger_prototypes>
                         <trigger_prototype>
@@ -336,6 +424,23 @@ Usage:
                         <tag>
                             <tag>scope</tag>
                             <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </trigger>
+                <trigger>
+                    <uuid>f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8</uuid>
+                    <expression>last(/Azure Storage Cost Monitor/azure.storage.all.invalid_tags)&gt;0</expression>
+                    <name>Invalid review date tags detected: {ITEM.LASTVALUE}</name>
+                    <priority>WARNING</priority>
+                    <description>Resources have malformed review date tags - check and correct tag format. Expected format: YYYY.MM.DD</description>
+                    <tags>
+                        <tag>
+                            <tag>scope</tag>
+                            <value>tag-management</value>
+                        </tag>
+                        <tag>
+                            <tag>cloud</tag>
+                            <value>azure</value>
                         </tag>
                     </tags>
                 </trigger>

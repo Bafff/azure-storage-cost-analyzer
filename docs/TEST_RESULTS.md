@@ -110,7 +110,7 @@
 
 #### Test: Unused Resources Report (Single Subscription)
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report "" "" "" --days 7
+./azure-storage-cost-analyzer.sh unused-report "" "" "" --days 7
 ```
 
 **Result:** ✅ SUCCESS

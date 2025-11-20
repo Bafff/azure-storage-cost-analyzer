@@ -86,14 +86,14 @@ cd /path/to/azure-storage-cost-analyzer
 az login
 
 # Test single subscription
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions "your-subscription-id" \
   --days 7 \
   --output-format json \
   --quiet
 
 # Test multi-subscription with Zabbix
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --output-format json \
@@ -125,7 +125,7 @@ az login
 
 **Command:**
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \  # Scans ALL accessible subscriptions
   --days 30 \
   --output-format json
@@ -349,20 +349,20 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
 
 ```bash
 # Test 1: Single subscription (no Zabbix)
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions "your-sub-id" \
   --days 7 \
   --output-format json \
   --quiet
 
 # Test 2: All subscriptions (no Zabbix)
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --output-format json
 
 # Test 3: All subscriptions + Zabbix
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --output-format json \
