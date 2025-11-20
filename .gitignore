@@ -12,6 +12,7 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+.azure-work/
 
 # Editor directories
 .vscode/

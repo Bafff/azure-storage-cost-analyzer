@@ -93,10 +93,10 @@ stages:
                 --zabbix-port 10051 \
                 --quiet
               workingDirectory: '$(Build.SourcesDirectory)'
-              failOnStandardError: false  # Don't fail on warnings
+              failOnStandardError: true
             env:
               AZURE_CLI_TIMEOUT: 300  # 5 minutes timeout for Azure CLI commands
-            continueOnError: true  # Continue even if some subscriptions fail
+            continueOnError: false
             condition: succeeded()
 
           - task: Bash@3
