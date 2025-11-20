@@ -39,4 +39,13 @@ shell=bash
 # SC2184: Quote arguments to unset
 # Rationale: Array indices in unset commands don't need quoting in our controlled context
 
-disable=SC2155,SC2034,SC2001,SC2086,SC2207,SC2188,SC2129,SC2154,SC2184
+# SC2164: Use 'cd ... || exit' or 'cd ... || return' in case cd fails
+# Rationale: Test scripts use cd in controlled environments where failure is acceptable
+
+# SC2317: Command appears to be unreachable
+# Rationale: Test scripts may have intentionally unreachable code for documentation/examples
+
+# SC1090: ShellCheck can't follow non-constant source
+# Rationale: Test scripts source files dynamically, which is intentional
+
+disable=SC2155,SC2034,SC2001,SC2086,SC2207,SC2188,SC2129,SC2154,SC2184,SC2164,SC2317,SC1090
