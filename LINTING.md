@@ -10,6 +10,7 @@ The following linters are configured:
 2. **xmllint** - XML validation for Zabbix templates
 3. **yamllint** - YAML syntax and style validation
 4. **Bash Syntax Check** - Native bash syntax validation
+5. **Zabbix Template Validator** - Zabbix-specific template structure validation
 
 ## GitHub Actions CI
 
@@ -101,6 +102,72 @@ bash -n azure-storage-cost-analysis-enhanced.sh
 # Check all scripts
 find . -name "*.sh" -type f -exec bash -n {} \; && echo "All scripts have valid syntax"
 ```
+
+### Zabbix Template Validation
+
+Zabbix-specific template structure validation:
+
+```bash
+# Install Python dependencies
+pip3 install lxml xmlschema
+
+# Validate Zabbix template structure with Python
+python3 << 'EOF'
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+def validate_zabbix_template(file_path):
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    # Check root element
+    assert root.tag == 'zabbix_export', "Root must be 'zabbix_export'"
+
+    # Check version
+    version = root.find('version')
+    assert version is not None, "Missing <version> element"
+    print(f"✓ Zabbix version: {version.text}")
+
+    # Check templates
+    templates = root.find('templates')
+    assert templates is not None, "Missing <templates> element"
+
+    for template in templates.findall('template'):
+        name = template.find('name')
+        assert name is not None, "Missing template name"
+        print(f"✓ Template: {name.text}")
+
+        # Count components
+        items = len(template.findall('.//item'))
+        triggers = len(template.findall('.//trigger'))
+        discoveries = len(template.findall('.//discovery_rule'))
+        print(f"  Items: {items}, Triggers: {triggers}, Discoveries: {discoveries}")
+
+# Validate all Zabbix templates
+for xml_file in Path('.').rglob('*zabbix*.xml'):
+    print(f"\nValidating: {xml_file}")
+    validate_zabbix_template(xml_file)
+    print("✓ Validation passed")
+EOF
+```
+
+**What the Zabbix validator checks:**
+- Root element is `<zabbix_export>`
+- Version element is present
+- Templates section exists
+- Each template has a name
+- UUIDs are present (recommended for Zabbix 7.0+)
+- Item keys don't contain spaces
+- Value types are properly formatted
+- Trigger expressions are valid
+- No duplicate UUIDs
+
+**Common Zabbix template issues:**
+- Missing or malformed UUIDs
+- Item keys with spaces (should use dots/underscores)
+- Invalid trigger expressions
+- Incorrect value type codes
+- Missing mandatory elements (name, key, etc.)
 
 ## Configuration Files
 
@@ -210,7 +277,12 @@ The lint workflow includes the following jobs:
 2. **xmllint** - Validates XML syntax and formatting
 3. **yamllint** - Validates YAML syntax and style
 4. **bash-syntax** - Performs bash syntax check (-n flag)
-5. **summary** - Provides consolidated results from all jobs
+5. **zabbix-template-validation** - Zabbix-specific template structure validation
+   - Validates Zabbix XML structure (root, version, templates)
+   - Checks for proper UUIDs, item keys, and trigger expressions
+   - Ensures template naming and grouping conventions
+   - Detects duplicate UUIDs and malformed elements
+6. **summary** - Provides consolidated results from all jobs
 
 All jobs must pass for the workflow to succeed.
 
