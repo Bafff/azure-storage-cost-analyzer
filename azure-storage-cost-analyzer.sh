@@ -91,6 +91,88 @@ az_with_timeout() {
     return $exit_code
 }
 
+# ============================================================================
+# AZURE PERMISSION VALIDATION
+# ============================================================================
+
+# Function to validate Azure permissions for a subscription
+# Args: subscription_id
+# Returns: 0 if permissions are valid, 1 otherwise
+validate_azure_permissions() {
+    local subscription_id="$1"
+    local current_user
+    local has_reader_role=false
+    local has_cost_access=false
+
+    log_verbose "Validating Azure permissions for subscription: $subscription_id"
+
+    # Get current user/service principal
+    current_user=$(az_with_timeout account show --query 'user.name' -o tsv 2>/dev/null)
+    if [[ -z "$current_user" ]]; then
+        log_progress "ERROR: Failed to get current Azure user"
+        return 1
+    fi
+
+    log_verbose "Checking permissions for user: $current_user"
+
+    # Check for Reader role or higher (Contributor, Owner)
+    # Get role assignments for the current user on this subscription
+    local role_assignments
+    role_assignments=$(az_with_timeout role assignment list \
+        --assignee "$current_user" \
+        --subscription "$subscription_id" \
+        --query "[?scope=='/subscriptions/${subscription_id}' || starts_with(scope, '/subscriptions/${subscription_id}/')].roleDefinitionName" \
+        -o tsv 2>/dev/null)
+
+    if [[ -n "$role_assignments" ]]; then
+        # Check for Reader, Contributor, Owner, or Cost Management Reader roles
+        if echo "$role_assignments" | grep -qiE '(Reader|Contributor|Owner|Cost Management Reader)'; then
+            has_reader_role=true
+            log_verbose "✓ Found required role assignment"
+        fi
+    fi
+
+    if [[ "$has_reader_role" == "false" ]]; then
+        log_progress "ERROR: User '$current_user' does not have Reader role or higher on subscription '$subscription_id'"
+        log_progress "Required: At least 'Reader' role on the subscription"
+        return 1
+    fi
+
+    # Validate Cost Management access by attempting a simple cost query
+    # Try to query costs for the last day to verify access
+    log_verbose "Validating Cost Management access..."
+    local cost_query_result
+    local yesterday
+    yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
+    local today
+    today=$(date -u '+%Y-%m-%d')
+
+    cost_query_result=$(az_with_timeout costmanagement query \
+        --type "ActualCost" \
+        --dataset-aggregation "{\"totalCost\":{\"name\":\"PreTaxCost\",\"function\":\"Sum\"}}" \
+        --dataset-grouping name="ResourceId" type="Dimension" \
+        --timeframe "Custom" \
+        --time-period from="$yesterday" to="$today" \
+        --scope "/subscriptions/$subscription_id" \
+        --query "rows" \
+        -o tsv 2>/dev/null)
+
+    # Check if the query succeeded (even if it returns no results)
+    if [[ $? -eq 0 ]]; then
+        has_cost_access=true
+        log_verbose "✓ Cost Management access validated"
+    else
+        log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
+        log_progress "Required: Cost Management Reader role or equivalent permissions"
+        log_progress "Hint: Grant 'Cost Management Reader' role with:"
+        log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
+        return 1
+    fi
+
+    log_verbose "✓ All required permissions validated for subscription: $subscription_id"
+    return 0
+}
+
 # Output format (can be set via --output-format or CONFIG_OUTPUT_FORMAT)
 # Formats: text (default), json, zabbix
 OUTPUT_FORMAT="text"
@@ -1313,6 +1395,12 @@ collect_subscription_metrics() {
         log_progress "ERROR: Failed to set subscription: $subscription_id"
         return 1
     }
+
+    # Validate permissions for this subscription
+    if ! validate_azure_permissions "$subscription_id"; then
+        log_progress "ERROR: Insufficient permissions on subscription: $subscription_id"
+        return 1
+    fi
 
     # Get subscription name
     local subscription_name
@@ -3976,6 +4064,13 @@ main() {
     # Set subscription (only for single-subscription mode)
     if [[ "$multi_subscription_mode" == "false" ]]; then
         az_with_timeout account set --subscription "$subscription_id" >/dev/null
+
+        # Validate permissions for single subscription
+        log_progress "Validating Azure permissions..."
+        if ! validate_azure_permissions "$subscription_id"; then
+            echo "Error: Insufficient permissions on subscription: $subscription_id"
+            exit $EXIT_CONFIG_ERROR
+        fi
     fi
 
     case "$resource_identifier" in

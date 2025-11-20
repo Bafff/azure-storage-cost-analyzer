@@ -54,7 +54,10 @@ chmod +x azure-storage-cost-analyzer.sh
 - Azure CLI installed and logged in (`az login`)
 - Access to the target subscription
 - jq installed for JSON processing
-- Contributor or Reader role on the subscription
+- **Required Azure Permissions:**
+  - **Reader** role (or higher: Contributor, Owner) on the subscription
+  - **Cost Management Reader** role for accessing cost data
+  - The script validates these permissions before execution
 
 **Output:**
 - Storage vs Transaction cost breakdown
