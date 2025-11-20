@@ -16,7 +16,7 @@
 # ~/.azure-storage-monitor.conf, or ./azure-storage-monitor.conf
 #
 # Usage:
-#   ./azure-storage-cost-analysis-enhanced.sh [RESOURCE_IDENTIFIER] [SUBSCRIPTION_ID] [START_DATE] [END_DATE] [OPTIONS]
+#   ./azure-storage-cost-analyzer.sh [RESOURCE_IDENTIFIER] [SUBSCRIPTION_ID] [START_DATE] [END_DATE] [OPTIONS]
 
 set -euo pipefail
 
@@ -1318,17 +1318,43 @@ collect_subscription_metrics() {
     local subscription_name
     subscription_name=$(get_subscription_name "$subscription_id")
 
-    # Get unattached disks
-    local unattached_disks_json
-    unattached_disks_json=$(list_unattached_disks "$subscription_id" "$resource_group" "$include_attached" 2>/dev/null)
+    # Get unattached disks (raw data)
+    local unattached_disks_raw
+    unattached_disks_raw=$(list_unattached_disks "$subscription_id" "$resource_group" "$include_attached" 2>/dev/null)
 
     local disk_count=0
     local total_disk_size=0
     local total_disk_cost=0.00
+    local disk_invalid_tags=0
+    local disk_excluded_pending=0
+
+    # Apply tag filtering (if enabled in config)
+    local unattached_disks_json
+    local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
+    if [[ -n "$tag_name" && -n "$unattached_disks_raw" ]]; then
+        local filtered_result
+        filtered_result=$(filter_resources_by_tags \
+            "$unattached_disks_raw" \
+            "$tag_name" \
+            "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
+            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "false" 2>/dev/null)
+
+        unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
+        disk_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
+        disk_invalid_tags=$(echo "$filtered_result" | jq -r '.stats.invalid_tags' 2>/dev/null || echo "0")
+        disk_excluded_pending=$(echo "$filtered_result" | jq -r '.stats.excluded_pending' 2>/dev/null || echo "0")
+    else
+        # No tag filtering
+        unattached_disks_json="$unattached_disks_raw"
+        if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
+            disk_count=$(echo "$unattached_disks_json" | jq '. | length' 2>/dev/null || echo "0")
+        fi
+    fi
 
     # Validate JSON and count disks
     if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        disk_count=$(echo "$unattached_disks_json" | jq '. | length' 2>/dev/null || echo "0")
+        [[ $disk_count -eq 0 ]] && disk_count=$(echo "$unattached_disks_json" | jq '. | length' 2>/dev/null || echo "0")
 
         # Collect disk IDs
         local -a disk_ids=()
@@ -1369,17 +1395,42 @@ collect_subscription_metrics() {
         fi
     fi
 
-    # Get snapshots
-    local snapshots_json
-    snapshots_json=$(get_all_snapshots_with_details "$subscription_id" "$resource_group" 2>/dev/null)
+    # Get snapshots (raw data)
+    local snapshots_raw
+    snapshots_raw=$(get_all_snapshots_with_details "$subscription_id" "$resource_group" 2>/dev/null)
 
     local snapshot_count=0
     local total_snapshot_size=0
     local total_snapshot_cost=0.00
+    local snapshot_invalid_tags=0
+    local snapshot_excluded_pending=0
+
+    # Apply tag filtering (if enabled in config)
+    local snapshots_json
+    if [[ -n "$tag_name" && -n "$snapshots_raw" ]]; then
+        local filtered_result
+        filtered_result=$(filter_resources_by_tags \
+            "$snapshots_raw" \
+            "$tag_name" \
+            "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
+            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "false" 2>/dev/null)
+
+        snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
+        snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
+        snapshot_invalid_tags=$(echo "$filtered_result" | jq -r '.stats.invalid_tags' 2>/dev/null || echo "0")
+        snapshot_excluded_pending=$(echo "$filtered_result" | jq -r '.stats.excluded_pending' 2>/dev/null || echo "0")
+    else
+        # No tag filtering
+        snapshots_json="$snapshots_raw"
+        if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
+            snapshot_count=$(echo "$snapshots_json" | jq '. | length' 2>/dev/null || echo "0")
+        fi
+    fi
 
     # Validate JSON and count snapshots
     if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        snapshot_count=$(echo "$snapshots_json" | jq '. | length' 2>/dev/null || echo "0")
+        [[ $snapshot_count -eq 0 ]] && snapshot_count=$(echo "$snapshots_json" | jq '. | length' 2>/dev/null || echo "0")
         total_snapshot_size=$(echo "$snapshots_json" | jq '[.[].Size] | add // 0' 2>/dev/null || echo "0")
 
         # Collect snapshot IDs
@@ -1424,6 +1475,10 @@ collect_subscription_metrics() {
     local total_waste_annual
     total_waste_annual=$(echo "$total_waste_monthly * 12" | bc -l)
 
+    # Calculate total tag metrics
+    local total_invalid_tags=$((disk_invalid_tags + snapshot_invalid_tags))
+    local total_excluded_pending=$((disk_excluded_pending + snapshot_excluded_pending))
+
     # Output JSON
     cat <<EOF
 {
@@ -1438,7 +1493,9 @@ collect_subscription_metrics() {
     "snapshots_size_gb": $total_snapshot_size,
     "snapshots_cost_monthly": $(printf "%.2f" "$total_snapshot_cost"),
     "total_waste_monthly": $(printf "%.2f" "$total_waste_monthly"),
-    "total_waste_annual": $(printf "%.2f" "$total_waste_annual")
+    "total_waste_annual": $(printf "%.2f" "$total_waste_annual"),
+    "invalid_tags": $total_invalid_tags,
+    "excluded_pending_review": $total_excluded_pending
   }
 }
 EOF
@@ -1486,6 +1543,8 @@ process_multi_subscription() {
     local total_snapshot_count=0
     local total_snapshot_size=0
     local total_snapshot_cost=0
+    local total_invalid_tags=0
+    local total_excluded_pending=0
 
     # Process each subscription sequentially
     local sub_index=1
@@ -1505,6 +1564,8 @@ process_multi_subscription() {
             local sub_snapshot_count=$(echo "$sub_metrics" | jq -r '.metrics.snapshots_count' 2>/dev/null || echo "0")
             local sub_snapshot_size=$(echo "$sub_metrics" | jq -r '.metrics.snapshots_size_gb' 2>/dev/null || echo "0")
             local sub_snapshot_cost=$(echo "$sub_metrics" | jq -r '.metrics.snapshots_cost_monthly' 2>/dev/null || echo "0")
+            local sub_invalid_tags=$(echo "$sub_metrics" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
+            local sub_excluded_pending=$(echo "$sub_metrics" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
 
             total_disk_count=$((total_disk_count + sub_disk_count))
             total_disk_size=$((total_disk_size + sub_disk_size))
@@ -1512,6 +1573,8 @@ process_multi_subscription() {
             total_snapshot_count=$((total_snapshot_count + sub_snapshot_count))
             total_snapshot_size=$((total_snapshot_size + sub_snapshot_size))
             total_snapshot_cost=$(echo "$total_snapshot_cost + $sub_snapshot_cost" 2>/dev/null | bc -l)
+            total_invalid_tags=$((total_invalid_tags + sub_invalid_tags))
+            total_excluded_pending=$((total_excluded_pending + sub_excluded_pending))
 
             log_progress "  ✓ Success: $sub_disk_count disks, $sub_snapshot_count snapshots, \$$(printf "%.2f" "$(echo "$sub_disk_cost + $sub_snapshot_cost" 2>/dev/null | bc -l)")/month"
         else
@@ -1597,7 +1660,9 @@ EOF
     "total_snapshots_size_gb": $total_snapshot_size,
     "total_snapshots_cost_monthly": $(printf "%.2f" "$total_snapshot_cost"),
     "total_waste_monthly_usd": $(printf "%.2f" "$total_waste_monthly"),
-    "total_waste_annual_usd": $(printf "%.2f" "$total_waste_annual")
+    "total_waste_annual_usd": $(printf "%.2f" "$total_waste_annual"),
+    "invalid_tags": $total_invalid_tags,
+    "excluded_pending_review": $total_excluded_pending
   },
   "by_subscription": $subscriptions_json
 }
@@ -1613,6 +1678,8 @@ EOF
             echo "$zabbix_host azure.storage.all.total_disks $timestamp $total_disk_count"
             echo "$zabbix_host azure.storage.all.total_snapshots $timestamp $total_snapshot_count"
             echo "$zabbix_host azure.storage.all.subscriptions_scanned $timestamp ${#subscription_ids[@]}"
+            echo "$zabbix_host azure.storage.all.invalid_tags $timestamp $total_invalid_tags"
+            echo "$zabbix_host azure.storage.all.excluded_pending_review $timestamp $total_excluded_pending"
             echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp $timestamp"
             echo "$zabbix_host azure.storage.script.execution_time_seconds $timestamp $execution_duration"
             echo "$zabbix_host azure.storage.script.last_run_status $timestamp 0"
@@ -1627,10 +1694,14 @@ EOF
                     local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly')
                     local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count')
                     local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count')
+                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0')
+                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0')
 
                     echo "$zabbix_host azure.storage.subscription[$sub_id].waste_monthly $timestamp $sub_waste"
                     echo "$zabbix_host azure.storage.subscription[$sub_id].disk_count $timestamp $sub_disks"
                     echo "$zabbix_host azure.storage.subscription[$sub_id].snapshot_count $timestamp $sub_snapshots"
+                    echo "$zabbix_host azure.storage.subscription[$sub_id].invalid_tags $timestamp $sub_invalid_tags"
+                    echo "$zabbix_host azure.storage.subscription[$sub_id].excluded_pending_review $timestamp $sub_excluded_pending"
                 fi
             done
             ;;

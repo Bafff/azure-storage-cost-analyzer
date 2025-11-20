@@ -62,7 +62,7 @@ Allow marking resources as "approved exceptions" with a review date tag:
 
 #### Priority 1: Core Integration (2-3 hours)
 
-**File:** `azure-storage-cost-analysis-enhanced.sh`
+**File:** `azure-storage-cost-analyzer.sh`
 
 ##### 1. Modify `collect_subscription_metrics()` (Line ~1150)
 
@@ -181,7 +181,7 @@ fi
 
 ##### 5. Add `invalid_tags` Count to Zabbix Output
 
-**File:** `azure-storage-cost-analysis-enhanced.sh`
+**File:** `azure-storage-cost-analyzer.sh`
 **Function:** `process_multi_subscription()` (Line ~1297)
 
 **In Zabbix output section, add:**
@@ -295,7 +295,7 @@ echo "$zabbix_host azure.storage.subscription[$sub_id].invalid_tags $timestamp $
      --set tags.Resource-Next-Review-Date="2026.01.15"
 
    # Run script
-   ./azure-storage-cost-analysis-enhanced.sh unused-report \
+   ./azure-storage-cost-analyzer.sh unused-report \
      --subscriptions test-sub-id --days 30
 
    # Verify:
@@ -328,7 +328,7 @@ echo "$zabbix_host azure.storage.subscription[$sub_id].invalid_tags $timestamp $
 
 4. **`--skip-tagged` Flag**
    ```bash
-   ./azure-storage-cost-analysis-enhanced.sh unused-report \
+   ./azure-storage-cost-analyzer.sh unused-report \
      --skip-tagged --days 30
 
    # Verify:

@@ -367,7 +367,7 @@ exclude_pending_review = true
 ### Default Behavior (Show All with Annotations)
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30
 
@@ -378,7 +378,7 @@ exclude_pending_review = true
 ### Skip Tagged Resources
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --skip-tagged
@@ -390,7 +390,7 @@ exclude_pending_review = true
 ### Review Tagged Resources Only
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --show-tagged-only

@@ -292,7 +292,7 @@ cd ~/Documents/Repos/azure-storage-cost-analyzer
 git checkout -b feature/tag-exclusion
 
 # Make changes
-vim azure-storage-cost-analysis-enhanced.sh
+vim azure-storage-cost-analyzer.sh
 
 # Commit
 git add .
@@ -364,7 +364,7 @@ azure-storage-cost-analyzer/
 ├── ZABBIX-INTEGRATION-GUIDE.md         # Zabbix setup guide
 ├── QUICK-START-GUIDE.md               # Quick start
 ├── PRD_Zabbix_Implementation.md       # Original requirements
-├── azure-storage-cost-analysis-enhanced.sh  # Main script
+├── azure-storage-cost-analyzer.sh  # Main script
 ├── azure-storage-monitor.conf.example  # Config template
 ├── azure-pipelines-storage-monitor.yml # ADO pipeline
 ├── zabbix-template-azure-storage-monitor-7.0.xml  # Zabbix template

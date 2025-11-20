@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Zabbix Version:** 7.0.5+
-**Script:** `azure-storage-cost-analysis-enhanced.sh`
+**Script:** `azure-storage-cost-analyzer.sh`
 **Last Updated:** 2025-11-20
 
 ---
@@ -44,7 +44,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
             │
             ▼
 ┌─────────────────────────────────────────────────┐
-│  azure-storage-cost-analysis-enhanced.sh        │
+│  azure-storage-cost-analyzer.sh        │
 │  ─────────────────────────────────────────────  │
 │  1. Scan all Azure subscriptions                │
 │  2. Collect unattached disks & snapshots        │
@@ -213,7 +213,7 @@ steps:
       azureSubscription: 'Azure-Service-Connection'  # Your service connection
       scriptType: 'bash'
       scriptLocation: 'scriptPath'
-      scriptPath: '$(Build.Repository.LocalPath)/azure-storage-cost-analysis-enhanced.sh'
+      scriptPath: '$(Build.Repository.LocalPath)/azure-storage-cost-analyzer.sh'
       arguments: |
         unused-report \
         --subscriptions all \
@@ -263,7 +263,7 @@ Repeat for each subscription or use management group scope.
 ### Basic Command
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --output-format json \
@@ -276,7 +276,7 @@ Repeat for each subscription or use management group scope.
 
 ```bash
 # Comma-separated list
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions "sub-1-id,sub-2-id,sub-3-id" \
   --days 30 \
   --zabbix-send \
@@ -308,7 +308,7 @@ auto_send = true
 Then run:
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --config /etc/azure-storage-monitor/config.conf
 ```
 
@@ -316,7 +316,7 @@ Then run:
 
 ```bash
 # See JSON output without sending to Zabbix
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --output-format json
@@ -458,7 +458,7 @@ Increase timeout or reduce scope:
 Enable verbose logging:
 
 ```bash
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
   --verbose \  # Add verbose flag
@@ -484,7 +484,7 @@ Check if received in Zabbix: **Monitoring** → **Latest data** → Filter by ho
 
 For issues or questions:
 
-1. Check script help: `./azure-storage-cost-analysis-enhanced.sh --help`
+1. Check script help: `./azure-storage-cost-analyzer.sh --help`
 2. Review test results: `TEST_RESULTS.md`
 3. Check PRD: `PRD_Zabbix_Implementation.md`
 4. Contact: DevOps Team

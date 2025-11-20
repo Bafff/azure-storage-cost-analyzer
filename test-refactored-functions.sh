@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_PATH="$SCRIPT_DIR/azure-storage-cost-analysis-enhanced.sh"
+SCRIPT_PATH="$SCRIPT_DIR/azure-storage-cost-analyzer.sh"
 
 # Test configuration
 SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"

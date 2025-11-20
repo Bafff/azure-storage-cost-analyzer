@@ -69,8 +69,8 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                chmod +x azure-storage-cost-analysis-enhanced.sh
-                ls -la azure-storage-cost-analysis-enhanced.sh
+                chmod +x azure-storage-cost-analyzer.sh
+                ls -la azure-storage-cost-analyzer.sh
 
           - task: AzureCLI@2
             displayName: 'Run Storage Cost Analysis'
@@ -81,7 +81,7 @@ stages:
               azureSubscription: 'Azure-Service-Connection'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
               scriptLocation: 'scriptPath'
-              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analysis-enhanced.sh'
+              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
               arguments: |
                 unused-report \
                 --subscriptions all \
@@ -160,7 +160,7 @@ stages:
 #              azureSubscription: 'Azure-Service-Connection'
 #              scriptType: 'bash'
 #              scriptLocation: 'scriptPath'
-#              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analysis-enhanced.sh'
+#              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
 #              arguments: |
 #                unused-report \
 #                --subscriptions $(SUBSCRIPTION_ID) \

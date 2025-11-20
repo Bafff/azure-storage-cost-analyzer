@@ -48,7 +48,7 @@ This PRD outlines the transformation of the Azure Storage Cost Analysis script f
 
 ### Current Limitations
 
-The existing script (`azure-storage-cost-analysis-enhanced.sh`) is designed for **interactive use** with the following limitations:
+The existing script (`azure-storage-cost-analyzer.sh`) is designed for **interactive use** with the following limitations:
 
 1. **No Automation Support**
    - Human-readable output only (ASCII tables)
@@ -2319,7 +2319,7 @@ AZURE_MONITOR_VERBOSITY=quiet
 
 ```bash
 # 1. Install script
-sudo cp azure-storage-cost-analysis-enhanced.sh /usr/local/bin/azure-storage-monitor
+sudo cp azure-storage-cost-analyzer.sh /usr/local/bin/azure-storage-monitor
 sudo chmod +x /usr/local/bin/azure-storage-monitor
 
 # 2. Create directories

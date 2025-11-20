@@ -8,13 +8,13 @@
 
 ```bash
 # Airflow Data AKS подписка
-./azure-storage-cost-analysis-enhanced.sh unattached-disks-only \
+./azure-storage-cost-analyzer.sh unattached-disks-only \
   "2f929c0a-d1f4-480c-a610-f75d1862fd53" \
   "2025-09-01T00:00:00+00:00" \
   "2025-10-13T23:59:59+00:00"
 
 # Arena Dev/Test подписка
-./azure-storage-cost-analysis-enhanced.sh unattached-disks-only \
+./azure-storage-cost-analyzer.sh unattached-disks-only \
   "03d76f78-4676-4116-b53a-162546996207" \
   "2025-09-01T00:00:00+00:00" \
   "2025-10-13T23:59:59+00:00"
@@ -32,7 +32,7 @@
 
 ```bash
 # Для подписок с небольшим количеством снапшотов (<50)
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   "03d76f78-4676-4116-b53a-162546996207" \
   "2025-09-01T00:00:00+00:00" \
   "2025-10-13T23:59:59+00:00"
@@ -52,10 +52,10 @@
 
 ```bash
 # Список всех дисков
-./azure-storage-cost-analysis-enhanced.sh list-disks "2f929c0a-d1f4-480c-a610-f75d1862fd53"
+./azure-storage-cost-analyzer.sh list-disks "2f929c0a-d1f4-480c-a610-f75d1862fd53"
 
 # Список всех снапшотов
-./azure-storage-cost-analysis-enhanced.sh list-snapshots "2f929c0a-d1f4-480c-a610-f75d1862fd53"
+./azure-storage-cost-analyzer.sh list-snapshots "2f929c0a-d1f4-480c-a610-f75d1862fd53"
 ```
 
 **Время выполнения**: 1-2 секунды
@@ -121,7 +121,7 @@ SECTION 3: RECOMMENDATIONS
 SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"
 
 # Рекомендуемая команда (12 снапшотов - быстро)
-./azure-storage-cost-analysis-enhanced.sh unused-report \
+./azure-storage-cost-analyzer.sh unused-report \
   "$SUBSCRIPTION_ID" \
   "2025-09-01T00:00:00+00:00" \
   "2025-10-13T23:59:59+00:00"
@@ -137,7 +137,7 @@ SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"
 SUBSCRIPTION_ID="2f929c0a-d1f4-480c-a610-f75d1862fd53"
 
 # Рекомендуемая команда (517 снапшотов - используем быструю)
-./azure-storage-cost-analysis-enhanced.sh unattached-disks-only \
+./azure-storage-cost-analyzer.sh unattached-disks-only \
   "$SUBSCRIPTION_ID" \
   "2025-09-01T00:00:00+00:00" \
   "2025-10-13T23:59:59+00:00"
@@ -179,7 +179,7 @@ END_DATE="$(date -u +%Y-%m-%dT23:59:59+00:00)"
 ### Пустая подписка = Default
 ```bash
 # Использует дефолтную подписку из скрипта
-./azure-storage-cost-analysis-enhanced.sh unattached-disks-only "" "..." "..."
+./azure-storage-cost-analyzer.sh unattached-disks-only "" "..." "..."
 ```
 
 ---
