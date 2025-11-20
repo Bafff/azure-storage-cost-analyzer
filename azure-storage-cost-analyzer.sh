@@ -2715,13 +2715,13 @@ analyze_unattached_disks_only() {
         # Sort all disk arrays before displaying (based on sort_by parameter)
         if [[ "$sort_by" == "rg" ]]; then
             echo "Sorting disks by Resource Group, then by size..." >&2
-            sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_rgs disk_sizes disk_tag_statuses disk_tag_dates
+            sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_tag_statuses disk_tag_dates disk_rgs disk_sizes
         elif [[ "$sort_by" == "date" ]]; then
             echo "Sorting disks by creation date (oldest first)..." >&2
-            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_createds disk_tag_statuses disk_tag_dates
+            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates disk_createds
         else
             echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3018,13 +3018,13 @@ generate_unused_resources_report() {
         # Sort all disk arrays before displaying (based on sort_by parameter)
         if [[ "$sort_by" == "rg" ]]; then
             echo "Sorting disks by Resource Group, then by size..." >&2
-            sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_rgs disk_sizes disk_tag_statuses disk_tag_dates
+            sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_tag_statuses disk_tag_dates disk_rgs disk_sizes
         elif [[ "$sort_by" == "date" ]]; then
             echo "Sorting disks by creation date (oldest first)..." >&2
-            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_createds disk_tag_statuses disk_tag_dates
+            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates disk_createds
         else
             echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3236,10 +3236,10 @@ generate_unused_resources_report() {
         # Sort all snapshot arrays before displaying (based on sort_by parameter)
         if [[ "$sort_by" == "date" ]]; then
             echo "Sorting snapshots by creation date (oldest first)..." >&2
-            sort_by_created_date snap_ids snap_names snap_skus snap_sizes snap_createds snap_tag_statuses snap_tag_dates
+            sort_by_created_date snap_ids snap_names snap_skus snap_sizes snap_tag_statuses snap_tag_dates snap_createds
         else
             echo "Sorting snapshots by size..." >&2
-            sort_by_size_ascending snap_ids snap_names snap_skus snap_createds snap_sizes snap_tag_statuses snap_tag_dates
+            sort_by_size_ascending snap_ids snap_names snap_skus snap_createds snap_tag_statuses snap_tag_dates snap_sizes
         fi
 
         # STEP 3: Loop through snapshots and print results using cost map (no API calls!)
