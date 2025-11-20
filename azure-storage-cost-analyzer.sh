@@ -2718,7 +2718,7 @@ analyze_unattached_disks_only() {
             sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_tag_statuses disk_tag_dates disk_rgs disk_sizes
         elif [[ "$sort_by" == "date" ]]; then
             echo "Sorting disks by creation date (oldest first)..." >&2
-            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates disk_createds
+            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
             echo "Sorting disks by size..." >&2
             sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
@@ -2810,9 +2810,9 @@ analyze_unattached_disks_only() {
         echo "" | tee -a "$output_file"
 
         # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
-            local invalid_count=$(echo "$tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+        if [[ -n "$tag_name" && -n "$disk_tag_filter_stats" ]]; then
+            local excluded_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+            local invalid_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
 
             if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
                 echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
@@ -3021,7 +3021,7 @@ generate_unused_resources_report() {
             sort_by_rg_then_size disk_ids disk_names disk_skus disk_createds disk_states disk_tag_statuses disk_tag_dates disk_rgs disk_sizes
         elif [[ "$sort_by" == "date" ]]; then
             echo "Sorting disks by creation date (oldest first)..." >&2
-            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_sizes disk_tag_statuses disk_tag_dates disk_createds
+            sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
             echo "Sorting disks by size..." >&2
             sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
@@ -3236,7 +3236,7 @@ generate_unused_resources_report() {
         # Sort all snapshot arrays before displaying (based on sort_by parameter)
         if [[ "$sort_by" == "date" ]]; then
             echo "Sorting snapshots by creation date (oldest first)..." >&2
-            sort_by_created_date snap_ids snap_names snap_skus snap_sizes snap_tag_statuses snap_tag_dates snap_createds
+            sort_by_created_date snap_ids snap_names snap_skus snap_tag_statuses snap_tag_dates snap_sizes snap_createds
         else
             echo "Sorting snapshots by size..." >&2
             sort_by_size_ascending snap_ids snap_names snap_skus snap_createds snap_tag_statuses snap_tag_dates snap_sizes
