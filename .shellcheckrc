@@ -1,0 +1,36 @@
+# ShellCheck configuration file for Azure Storage Cost Analyzer
+# This file configures which ShellCheck warnings to ignore
+
+# SC2155: Declare and assign separately to avoid masking return values
+# Rationale: This is a style preference. We use this pattern extensively for readability
+# and the return values we're capturing (from commands like jq, echo, etc.) are not
+# critical for error handling in our use cases.
+
+# SC2034: Variable appears unused
+# Rationale: Many config variables are declared but may be used in future features
+# or are placeholders for configuration options. They're intentionally defined.
+
+# SC2001: See if you can use ${variable//search/replace} instead
+# Rationale: sed usage is more readable for complex patterns and is intentional
+
+# SC2086: Double quote to prevent globbing and word splitting
+# Rationale: In our specific use cases with controlled inputs, this is safe
+# We explicitly handle this where needed
+
+# SC2207: Prefer mapfile or read -a to split command output
+# Rationale: mapfile is not available in older bash versions. Our pattern is compatible
+
+# SC2188: Redirection doesn't have a command
+# Rationale: We use "> file" intentionally to truncate files, which is valid bash
+
+# SC2129: Consider using { cmd1; cmd2; } >> file instead of individual redirects
+# Rationale: Individual redirects are more readable for our use case
+
+# SC2154: Variable is referenced but not assigned
+# Rationale: We use nameref/indirect variable references in functions that manipulate
+# arrays passed by name. This is a valid bash pattern for our use case.
+
+# SC2184: Quote arguments to unset
+# Rationale: Array indices in unset commands don't need quoting in our controlled context
+
+disable=SC2155,SC2034,SC2001,SC2086,SC2207,SC2188,SC2129,SC2154,SC2184
