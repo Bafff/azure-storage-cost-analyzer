@@ -145,8 +145,78 @@ check_dependencies() {
 }
 
 # ============================================================================
-# END DEPENDENCY VALIDATION
+# AZURE PERMISSION VALIDATION
 # ============================================================================
+
+# Function to validate Azure permissions for a subscription
+# Args: subscription_id
+# Returns: 0 if permissions are valid, 1 otherwise
+validate_azure_permissions() {
+    local subscription_id="$1"
+    local current_user
+    local has_reader_role=false
+    local has_cost_access=false
+
+    log_verbose "Validating Azure permissions for subscription: $subscription_id"
+
+    # Get current user/service principal
+    current_user=$(az_with_timeout account show --query 'user.name' -o tsv 2>/dev/null)
+    if [[ -z "$current_user" ]]; then
+        log_progress "ERROR: Failed to get current Azure user"
+        return 1
+    fi
+
+    log_verbose "Checking permissions for user: $current_user"
+
+    # Check for Reader role or higher (Contributor, Owner)
+    local role_assignments
+    role_assignments=$(az_with_timeout role assignment list \
+        --assignee "$current_user" \
+        --subscription "$subscription_id" \
+        --query "[?scope=='/subscriptions/${subscription_id}' || starts_with(scope, '/subscriptions/${subscription_id}/')].roleDefinitionName" \
+        -o tsv 2>/dev/null)
+
+    if [[ -n "$role_assignments" ]]; then
+        if echo "$role_assignments" | grep -qiE '(Reader|Contributor|Owner|Cost Management Reader)'; then
+            has_reader_role=true
+            log_verbose "✓ Found required role assignment"
+        fi
+    fi
+
+    if [[ "$has_reader_role" == "false" ]]; then
+        log_progress "ERROR: User '$current_user' does not have Reader role or higher on subscription '$subscription_id'"
+        log_progress "Required: At least 'Reader' role on the subscription"
+        return 1
+    fi
+
+    # Validate Cost Management access by attempting a simple cost query
+    log_verbose "Validating Cost Management access..."
+    local yesterday today cost_query_result
+    yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
+    today=$(date -u '+%Y-%m-%d')
+
+    if cost_query_result=$(az_with_timeout costmanagement query \
+        --type "ActualCost" \
+        --dataset-aggregation "{\"totalCost\":{\"name\":\"PreTaxCost\",\"function\":\"Sum\"}}" \
+        --dataset-grouping name="ResourceId" type="Dimension" \
+        --timeframe "Custom" \
+        --time-period from="$yesterday" to="$today" \
+        --scope "/subscriptions/$subscription_id" \
+        --query "rows" \
+        -o tsv 2>/dev/null); then
+        has_cost_access=true
+        log_verbose "✓ Cost Management access validated"
+    else
+        log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
+        log_progress "Required: Cost Management Reader role or equivalent permissions"
+        log_progress "Hint: Grant 'Cost Management Reader' role with:"
+        log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
+        return 1
+    fi
+
+    log_verbose "✓ All required permissions validated for subscription: $subscription_id"
+    return 0
+}
 
 # Output format (can be set via --output-format or CONFIG_OUTPUT_FORMAT)
 # Formats: text (default), json, zabbix
@@ -256,17 +326,17 @@ calculate_date_range() {
             END_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             # Start date: N days ago
-        if command -v gdate &>/dev/null; then
-            # GNU date (Linux, or brew install coreutils on Mac)
-            START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
-        elif date -v-1d &>/dev/null 2>&1; then
-            # BSD date (macOS default)
-            START_DATE="$(date -u -v-"${days}"d +"%Y-%m-%dT%H:%M:%SZ")"
-        else
-            echo "Error: Unable to calculate dates (date command not supported)" >&2
-            return 1
-        fi
-        ;;
+            if command -v gdate &>/dev/null; then
+                # GNU date (Linux, or brew install coreutils on Mac)
+                START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
+            elif date -v-1d &>/dev/null 2>&1; then
+                # BSD date (macOS default)
+                START_DATE="$(date -u -v-"${days}"d +"%Y-%m-%dT%H:%M:%SZ")"
+            else
+                echo "Error: Unable to calculate dates (date command not supported)" >&2
+                return 1
+            fi
+            ;;
 
         last-month)
             # Previous full month (1st to last day)
@@ -1357,6 +1427,12 @@ collect_subscription_metrics() {
         return 1
     }
 
+    # Validate permissions for this subscription
+    if ! validate_azure_permissions "$subscription_id"; then
+        log_progress "ERROR: Insufficient permissions on subscription: $subscription_id"
+        return 1
+    fi
+
     # Get subscription name
     local subscription_name
     subscription_name=$(get_subscription_name "$subscription_id")
@@ -2126,6 +2202,7 @@ truncate_name() {
     fi
 }
 
+# shellcheck disable=SC2154  # dynamic array indirection via eval
 lookup_cost() {
     local search_id="$1"
     local keys_var="$2"
@@ -2162,13 +2239,15 @@ lookup_cost() {
 # Bash 3.2 compatible bubble sort that keeps all arrays in sync
 # Usage: sort_by_size_ascending array1_name array2_name ... size_array_name
 # The last argument must be the array containing numeric sizes to sort by
+# shellcheck disable=SC2154  # dynamic array indirection via eval
 sort_by_size_ascending() {
     # Get all array names (last one is the size array)
     local -a array_names=("$@")
     local size_array_name="${array_names[${#array_names[@]}-1]}"
 
     # Get array length from size array
-    eval "local n=\${#${size_array_name}[@]}"  # shellcheck disable=SC2154
+    # shellcheck disable=SC2154  # dynamic array name via eval
+    eval "local n=\${#${size_array_name}[@]}"
 
     # Bubble sort - swap elements in all arrays simultaneously
     for ((i=0; i<n-1; i++)); do
@@ -2198,12 +2277,14 @@ sort_by_size_ascending() {
 # Bash 3.2 compatible bubble sort with two-level comparison
 # Usage: sort_by_rg_then_size array1_name array2_name ... rg_array_name size_array_name
 # The last two arguments must be: resource_group_array size_array
+# shellcheck disable=SC2154  # dynamic array indirection via eval
 sort_by_rg_then_size() {
     local -a array_names=("$@")
     local size_array_name="${array_names[${#array_names[@]}-1]}"
     local rg_array_name="${array_names[${#array_names[@]}-2]}"
 
     # Get array length
+    # shellcheck disable=SC2154  # dynamic array name via eval
     eval "local n=\${#${size_array_name}[@]}"
 
     # Bubble sort with two-level comparison: RG first, then size within RG
@@ -2212,10 +2293,14 @@ sort_by_rg_then_size() {
             local k=$((j+1))
 
             # Get RGs and sizes to compare
-            eval "local rg_j=\${${rg_array_name}[$j]}"   # shellcheck disable=SC2154
-            eval "local rg_k=\${${rg_array_name}[$k]}"   # shellcheck disable=SC2154
-            eval "local size_j=\${${size_array_name}[$j]}" # shellcheck disable=SC2154
-            eval "local size_k=\${${size_array_name}[$k]}" # shellcheck disable=SC2154
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local rg_j=\${${rg_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local rg_k=\${${rg_array_name}[$k]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local size_j=\${${size_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local size_k=\${${size_array_name}[$k]}"
 
             local should_swap=false
 
@@ -2243,13 +2328,15 @@ sort_by_rg_then_size() {
 # Bash 3.2 compatible bubble sort that keeps all arrays in sync
 # Usage: sort_by_created_date array1_name array2_name ... created_date_array_name
 # The last argument must be the array containing ISO date strings (YYYY-MM-DD) to sort by
+# shellcheck disable=SC2154  # dynamic array indirection via eval
 sort_by_created_date() {
     # Get all array names (last one is the created date array)
     local -a array_names=("$@")
     local date_array_name="${array_names[${#array_names[@]}-1]}"
 
     # Get array length from date array
-    eval "local n=\${#${date_array_name}[@]}"  # shellcheck disable=SC2154
+    # shellcheck disable=SC2154  # dynamic array name via eval
+    eval "local n=\${#${date_array_name}[@]}"
 
     # Bubble sort - swap elements in all arrays simultaneously
     for ((i=0; i<n-1; i++)); do
@@ -2257,8 +2344,10 @@ sort_by_created_date() {
             local k=$((j+1))
 
             # Get dates to compare (ISO format: YYYY-MM-DD allows string comparison)
-            eval "local date_j=\${${date_array_name}[$j]}" # shellcheck disable=SC2154
-            eval "local date_k=\${${date_array_name}[$k]}" # shellcheck disable=SC2154
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_j=\${${date_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_k=\${${date_array_name}[$k]}"
 
             # Compare dates (ascending order: oldest first)
             # String comparison works for ISO dates (YYYY-MM-DD)
@@ -4023,6 +4112,13 @@ main() {
     # Set subscription (only for single-subscription mode)
     if [[ "$multi_subscription_mode" == "false" ]]; then
         az_with_timeout account set --subscription "$subscription_id" >/dev/null
+
+        # Validate permissions for single subscription
+        log_progress "Validating Azure permissions..."
+        if ! validate_azure_permissions "$subscription_id"; then
+            echo "Error: Insufficient permissions on subscription: $subscription_id"
+            exit $EXIT_CONFIG_ERROR
+        fi
     fi
 
     case "$resource_identifier" in

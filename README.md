@@ -37,6 +37,7 @@ chmod +x azure-storage-cost-analyzer.sh
 - Azure CLI authenticated (`az login`)
 - `jq`, `bc`, `timeout`/`gtimeout`
 - Optional: `zabbix_sender` for metrics
+- Permissions per subscription: at least `Reader` + `Cost Management Reader` (the script validates before running)
 
 ## Configuration
 Copy `azure-storage-monitor.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
