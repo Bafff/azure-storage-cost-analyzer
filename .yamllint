@@ -1,0 +1,44 @@
+---
+# yamllint configuration for Azure Storage Cost Analyzer
+
+extends: relaxed
+
+rules:
+  # Line length - allow longer lines for Azure Pipelines and GitHub Actions
+  line-length:
+    max: 150
+    level: warning
+
+  # Indentation - use 2 spaces
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Comments - require space after hash
+  comments:
+    min-spaces-from-content: 1
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+  # Empty lines
+  empty-lines:
+    max: 2
+
+  # Document start (---) - not required
+  document-start: disable
+
+  # Truthy values (yes/no, true/false, on/off)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # Brackets
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Braces
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
