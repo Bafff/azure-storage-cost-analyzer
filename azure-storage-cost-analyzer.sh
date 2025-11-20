@@ -2810,9 +2810,9 @@ analyze_unattached_disks_only() {
         echo "" | tee -a "$output_file"
 
         # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$disk_tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
-            local invalid_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+        if [[ -n "$tag_name" && -n "$tag_filter_stats" ]]; then
+            local excluded_count=$(echo "$tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+            local invalid_count=$(echo "$tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
 
             if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
                 echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
@@ -4022,7 +4022,7 @@ main() {
             if ! validate_date_range "$start_date" "$end_date"; then
                 exit $EXIT_CONFIG_ERROR
             fi
-            analyze_unattached_disks_only "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$sort_by"
+            analyze_unattached_disks_only "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$sort_by" "" "$skip_tagged" "$show_tagged_only"
             exit $?
             ;;
         "unused-report")
@@ -4082,7 +4082,7 @@ main() {
                 exit $exit_code
             else
                 # Single subscription analysis
-                generate_unused_resources_report "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$sort_by"
+                generate_unused_resources_report "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$sort_by" "" "$skip_tagged" "$show_tagged_only"
                 exit $?
             fi
             ;;
