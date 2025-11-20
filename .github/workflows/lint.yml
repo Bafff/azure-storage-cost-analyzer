@@ -129,15 +129,15 @@ jobs:
           echo "ShellCheck:         ${{ needs.shellcheck.result }}"
           echo "XML Validation:     ${{ needs.xmllint.result }}"
           echo "YAML Validation:    ${{ needs.yamllint.result }}"
-          echo "Bash Syntax:        ${{ needs.bash-syntax.result }}"
-          echo "Zabbix Template:    ${{ needs.zabbix-template-validation.result }}"
+          echo "Bash Syntax:        ${{ needs['bash-syntax'].result }}"
+          echo "Zabbix Template:    ${{ needs['zabbix-template-validation'].result }}"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
           if [ "${{ needs.shellcheck.result }}" != "success" ] || \
              [ "${{ needs.xmllint.result }}" != "success" ] || \
              [ "${{ needs.yamllint.result }}" != "success" ] || \
-             [ "${{ needs.bash-syntax.result }}" != "success" ] || \
-             [ "${{ needs.zabbix-template-validation.result }}" != "success" ]; then
+             [ "${{ needs['bash-syntax'].result }}" != "success" ] || \
+             [ "${{ needs['zabbix-template-validation'].result }}" != "success" ]; then
             echo "❌ One or more linting checks failed"
             exit 1
           else
