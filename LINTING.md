@@ -105,51 +105,32 @@ find . -name "*.sh" -type f -exec bash -n {} \; && echo "All scripts have valid 
 
 ### Zabbix Template Validation
 
-Zabbix-specific template structure validation:
+Comprehensive Zabbix-specific template validation using the standalone validator:
 
 ```bash
-# Install Python dependencies
-pip3 install lxml xmlschema
+# Validate a specific template
+python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.xml
 
-# Validate Zabbix template structure with Python
-python3 << 'EOF'
-import xml.etree.ElementTree as ET
-from pathlib import Path
+# Validate all templates in current directory
+python3 validate-zabbix-template.py --all
 
-def validate_zabbix_template(file_path):
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    # Check root element
-    assert root.tag == 'zabbix_export', "Root must be 'zabbix_export'"
-
-    # Check version
-    version = root.find('version')
-    assert version is not None, "Missing <version> element"
-    print(f"✓ Zabbix version: {version.text}")
-
-    # Check templates
-    templates = root.find('templates')
-    assert templates is not None, "Missing <templates> element"
-
-    for template in templates.findall('template'):
-        name = template.find('name')
-        assert name is not None, "Missing template name"
-        print(f"✓ Template: {name.text}")
-
-        # Count components
-        items = len(template.findall('.//item'))
-        triggers = len(template.findall('.//trigger'))
-        discoveries = len(template.findall('.//discovery_rule'))
-        print(f"  Items: {items}, Triggers: {triggers}, Discoveries: {discoveries}")
-
-# Validate all Zabbix templates
-for xml_file in Path('.').rglob('*zabbix*.xml'):
-    print(f"\nValidating: {xml_file}")
-    validate_zabbix_template(xml_file)
-    print("✓ Validation passed")
-EOF
+# The script is executable, so you can also run:
+./validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.xml
 ```
+
+**The validator (`validate-zabbix-template.py`) is a comprehensive standalone script that checks:**
+- Template structure and XML syntax
+- Zabbix version compatibility (optimized for 7.0+)
+- UUID format (both dashed and non-dashed formats)
+- Item validation (keys, value types, duplicate detection)
+- Discovery rules and item prototypes
+- Trigger expressions and priority levels
+- Macro naming conventions
+- Template groups and metadata
+
+**Supports both Zabbix 7.0 formats:**
+- Numeric constants: `<value_type>0</value_type>` (FLOAT)
+- String constants: `<value_type>FLOAT</value_type>` ✅ Recommended
 
 **What the Zabbix validator checks:**
 - Root element is `<zabbix_export>`
