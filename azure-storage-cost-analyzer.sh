@@ -91,6 +91,73 @@ az_with_timeout() {
     return $exit_code
 }
 
+# ============================================================================
+# DEPENDENCY VALIDATION
+# ============================================================================
+
+# Function to check for required dependencies before script execution
+# This prevents the script from failing 10 minutes into execution
+check_dependencies() {
+    local missing_deps=()
+    local all_deps=("az" "jq" "bc")
+
+    # Check for timeout command (used by az_with_timeout)
+    # Note: timeout is optional but recommended for better error handling
+    if ! command -v timeout >/dev/null 2>&1 && ! command -v gtimeout >/dev/null 2>&1; then
+        echo "Warning: 'timeout' command not found. Azure CLI calls will not have timeout protection." >&2
+        echo "Install 'coreutils' package (or 'gtimeout' on macOS) for better error handling." >&2
+    fi
+
+    # Check each required dependency
+    for dep in "${all_deps[@]}"; do
+        if ! command -v "$dep" >/dev/null 2>&1; then
+            missing_deps+=("$dep")
+        fi
+    done
+
+    # Report missing dependencies
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        echo "ERROR: Missing required dependencies: ${missing_deps[*]}" >&2
+        echo "" >&2
+        echo "Please install the missing tools:" >&2
+
+        for dep in "${missing_deps[@]}"; do
+            case "$dep" in
+                az)
+                    echo "  - Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli" >&2
+                    ;;
+                jq)
+                    echo "  - jq (JSON processor): https://stedolan.github.io/jq/download/" >&2
+                    echo "    Ubuntu/Debian: sudo apt-get install jq" >&2
+                    echo "    macOS: brew install jq" >&2
+                    echo "    RHEL/CentOS: sudo yum install jq" >&2
+                    ;;
+                bc)
+                    echo "  - bc (calculator): Usually included in base system" >&2
+                    echo "    Ubuntu/Debian: sudo apt-get install bc" >&2
+                    echo "    macOS: brew install bc" >&2
+                    echo "    RHEL/CentOS: sudo yum install bc" >&2
+                    ;;
+            esac
+        done
+
+        return 1
+    fi
+
+    # Verify Azure CLI is logged in
+    if ! az_with_timeout account show >/dev/null 2>&1; then
+        echo "ERROR: Azure CLI is not logged in or configured." >&2
+        echo "Please run: az login" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# END DEPENDENCY VALIDATION
+# ============================================================================
+
 # Output format (can be set via --output-format or CONFIG_OUTPUT_FORMAT)
 # Formats: text (default), json, zabbix
 OUTPUT_FORMAT="text"
@@ -4181,6 +4248,12 @@ main() {
 # Show usage if no arguments
 if [[ $# -eq 0 ]]; then
     usage
+fi
+
+# Check for required dependencies before execution
+# This prevents the script from failing 10 minutes into execution
+if ! check_dependencies; then
+    exit $EXIT_CONFIG_ERROR
 fi
 
 # Run main function
