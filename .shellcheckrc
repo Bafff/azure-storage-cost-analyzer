@@ -1,0 +1,33 @@
+# ShellCheck configuration for Azure Storage Cost Analyzer
+# https://www.shellcheck.net/wiki/
+
+# Disable specific checks that may not be relevant for this project
+# Uncomment and add codes as needed after initial linting run
+
+# SC1090: Can't follow non-constant source. Use a directive to specify location.
+# (Common when sourcing config files with variables)
+# disable=SC1090
+
+# SC1091: Not following: file not included in mock.
+# (Disable if you're sourcing files that don't exist in CI environment)
+# disable=SC1091
+
+# SC2034: Variable appears unused. Verify use (or export if used externally).
+# (May have false positives with variables used in sourced files)
+# disable=SC2034
+
+# SC2154: Variable is referenced but not assigned.
+# (May have false positives with variables from sourced config files)
+# disable=SC2154
+
+# Enable all optional checks for maximum code quality
+enable=all
+
+# Set shell dialect (bash is the default)
+shell=bash
+
+# Exclude specific files or patterns (if needed)
+# Example: exclude=test-*.sh
+
+# Minimum severity level: error, warning, info, style
+# severity=warning
