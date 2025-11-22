@@ -210,7 +210,7 @@ import_template() {
                         \"createMissing\": true,
                         \"updateExisting\": true
                     },
-                    \"templateGroups\": {
+                    \"template_groups\": {
                         \"createMissing\": true
                     }
                 },
