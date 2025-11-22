@@ -1,10 +1,10 @@
 zabbix_export:
   version: '7.0'
   template_groups:
-    - uuid: 7df96b18f2304952b5c3a7c1c2e4c5e1
+    - uuid: 7df96b18-f230-4952-b5c3-a7c1c2e4c5e1
       name: Templates/Cloud
   templates:
-    - uuid: a1b2c3d4e5f6789012345678901234ab
+    - uuid: a1b2c3d4-e5f6-7890-1234-5678901234ab
       template: Azure Storage Cost Monitor
       name: Azure Storage Cost Monitor
       description: |
@@ -26,7 +26,7 @@ zabbix_export:
         - name: Templates/Cloud
       items:
         # Aggregated Metrics
-        - uuid: b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6
+        - uuid: b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6
           name: Total Monthly Waste (All Subscriptions)
           type: ZABBIX_ACTIVE
           key: azure.storage.all.total_waste.monthly
@@ -42,7 +42,7 @@ zabbix_export:
             - tag: cloud
               value: azure
           triggers:
-            - uuid: d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0
+            - uuid: d5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>500'
               name: 'High total Azure storage waste: ${ITEM.LASTVALUE}'
               priority: WARNING
@@ -52,7 +52,7 @@ zabbix_export:
                   value: cost
                 - tag: cloud
                   value: azure
-            - uuid: e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1
+            - uuid: e6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>1000'
               name: 'Critical total Azure storage waste: ${ITEM.LASTVALUE}'
               priority: HIGH
@@ -63,7 +63,7 @@ zabbix_export:
                 - tag: cloud
                   value: azure
 
-        - uuid: c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7
+        - uuid: c2d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e6f7
           name: Total Unattached Disks Count
           type: ZABBIX_ACTIVE
           key: azure.storage.all.total_disks
@@ -77,7 +77,7 @@ zabbix_export:
             - tag: component
               value: storage
 
-        - uuid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8
+        - uuid: d3e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8
           name: Total Snapshots Count
           type: ZABBIX_ACTIVE
           key: azure.storage.all.total_snapshots
@@ -91,7 +91,7 @@ zabbix_export:
             - tag: component
               value: storage
 
-        - uuid: e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9
+        - uuid: e4f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8b9
           name: Subscriptions Scanned
           type: ZABBIX_ACTIVE
           key: azure.storage.all.subscriptions_scanned
@@ -104,7 +104,7 @@ zabbix_export:
             - tag: component
               value: monitoring
 
-        - uuid: f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+        - uuid: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
           name: Total Invalid Review Tags
           type: ZABBIX_ACTIVE
           key: azure.storage.all.invalid_tags
@@ -120,7 +120,7 @@ zabbix_export:
             - tag: type
               value: tag-management
           triggers:
-            - uuid: f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8
+            - uuid: f3a4b5c6-d7e8-f9a0-b1c2-d3e4f5a6b7c8
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.all.invalid_tags)>0'
               name: 'Invalid review date tags detected: {ITEM.LASTVALUE}'
               priority: WARNING
@@ -131,7 +131,7 @@ zabbix_export:
                 - tag: cloud
                   value: azure
 
-        - uuid: f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7
+        - uuid: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7
           name: Resources Excluded (Pending Review)
           type: ZABBIX_ACTIVE
           key: azure.storage.all.excluded_pending_review
@@ -148,7 +148,7 @@ zabbix_export:
               value: tag-management
 
         # Script Execution Metrics
-        - uuid: f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0
+        - uuid: f5a6b7c8-d9e0-f1a2-b3c4-d5e6f7a8b9c0
           name: Last Run Timestamp
           type: ZABBIX_ACTIVE
           key: azure.storage.script.last_run_timestamp
@@ -161,7 +161,7 @@ zabbix_export:
             - tag: component
               value: monitoring
           triggers:
-            - uuid: f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2
+            - uuid: f7a8b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2
               expression: 'now()-last(/Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)>86400'
               name: Azure storage monitor script hasn't run in 24 hours
               priority: AVERAGE
@@ -170,7 +170,7 @@ zabbix_export:
                 - tag: scope
                   value: monitoring
 
-        - uuid: a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1
+        - uuid: a6b7c8d9-e0f1-a2b3-c4d5-e6f7a8b9c0d1
           name: Script Execution Time
           type: ZABBIX_ACTIVE
           key: azure.storage.script.execution_time_seconds
@@ -184,7 +184,7 @@ zabbix_export:
             - tag: component
               value: performance
 
-        - uuid: b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2
+        - uuid: b7c8d9e0-f1a2-b3c4-d5e6-f7a8b9c0d1e2
           name: Last Run Status
           type: ZABBIX_ACTIVE
           key: azure.storage.script.last_run_status
@@ -198,7 +198,7 @@ zabbix_export:
             - tag: component
               value: monitoring
           triggers:
-            - uuid: a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3
+            - uuid: a8b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.script.last_run_status)>0'
               name: Azure storage monitor script execution failed
               priority: WARNING
@@ -209,7 +209,7 @@ zabbix_export:
 
       discovery_rules:
         # Low-Level Discovery for Subscriptions
-        - uuid: c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3
+        - uuid: c8d9e0f1-a2b3-c4d5-e6f7-a8b9c0d1e2f3
           name: Azure Subscriptions Discovery
           type: ZABBIX_ACTIVE
           key: azure.storage.discovery.subscriptions
@@ -217,7 +217,7 @@ zabbix_export:
           lifetime: 7d
           description: Discovers Azure subscriptions for per-subscription monitoring
           item_prototypes:
-            - uuid: d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4
+            - uuid: d9e0f1a2-b3c4-d5e6-f7a8-b9c0d1e2f3a4
               name: 'Subscription [{#SUBSCRIPTION_NAME}]: Monthly Waste'
               type: ZABBIX_ACTIVE
               key: 'azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly'
@@ -231,7 +231,7 @@ zabbix_export:
                 - tag: subscription
                   value: '{#SUBSCRIPTION_NAME}'
 
-            - uuid: e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5
+            - uuid: e0f1a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
               name: 'Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks'
               type: ZABBIX_ACTIVE
               key: 'azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count'
@@ -245,7 +245,7 @@ zabbix_export:
                 - tag: subscription
                   value: '{#SUBSCRIPTION_NAME}'
 
-            - uuid: f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+            - uuid: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
               name: 'Subscription [{#SUBSCRIPTION_NAME}]: Snapshots'
               type: ZABBIX_ACTIVE
               key: 'azure.storage.subscription[{#SUBSCRIPTION_ID}].snapshot_count'
@@ -259,7 +259,7 @@ zabbix_export:
                 - tag: subscription
                   value: '{#SUBSCRIPTION_NAME}'
 
-            - uuid: f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9
+            - uuid: f4a5b6c7-d8e9-f0a1-b2c3-d4e5f6a7b8c9
               name: 'Subscription [{#SUBSCRIPTION_NAME}]: Invalid Tags'
               type: ZABBIX_ACTIVE
               key: 'azure.storage.subscription[{#SUBSCRIPTION_ID}].invalid_tags'
@@ -275,7 +275,7 @@ zabbix_export:
                 - tag: type
                   value: tag-management
 
-            - uuid: f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0
+            - uuid: f5a6b7c8-d9e0-f1a2-b3c4-d5e6f7a8b9c0
               name: 'Subscription [{#SUBSCRIPTION_NAME}]: Excluded Pending Review'
               type: ZABBIX_ACTIVE
               key: 'azure.storage.subscription[{#SUBSCRIPTION_ID}].excluded_pending_review'
@@ -292,7 +292,7 @@ zabbix_export:
                   value: tag-management
 
           trigger_prototypes:
-            - uuid: a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7
+            - uuid: a2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly)>100'
               name: 'High storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
               priority: WARNING
@@ -301,7 +301,7 @@ zabbix_export:
                 - tag: scope
                   value: cost
 
-            - uuid: b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8
+            - uuid: b3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly)>250'
               name: 'Critical storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
               priority: HIGH
@@ -310,7 +310,7 @@ zabbix_export:
                 - tag: scope
                   value: cost
 
-            - uuid: c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+            - uuid: c4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
               expression: 'last(/Azure Storage Cost Monitor/azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count)>20'
               name: 'Many unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
               priority: WARNING
@@ -320,7 +320,7 @@ zabbix_export:
                   value: resources
 
       valuemaps:
-        - uuid: b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4
+        - uuid: b9c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4
           name: Script Status
           mappings:
             - value: '0'
