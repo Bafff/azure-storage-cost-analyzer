@@ -302,7 +302,7 @@ zabbix_export:
         - tag: scope
           value: cost
       - uuid: ab5799dda73749a3b94b27a8827b1c59
-        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD}
+        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
         name: 'Many unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
         priority: WARNING
         description: More than 20 unattached disks found in subscription {#SUBSCRIPTION_NAME}
@@ -312,7 +312,7 @@ zabbix_export:
     macros:
     - macro: '{$UNATTACHED_DISK_THRESHOLD}'
       value: '0'
-      description: Warning threshold for unattached disks per subscription (set >0 to enable)
+      description: Warning threshold for unattached disks per subscription (set >0 to enable; override per subscription with {$UNATTACHED_DISK_THRESHOLD:\"<SUBSCRIPTION_ID>\"})
     valuemaps:
     - uuid: ab7c2574a348422597ada338f9098c2a
       name: Script Status
