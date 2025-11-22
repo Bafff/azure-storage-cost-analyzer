@@ -12,9 +12,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.zabbix.yml"
-# Use simplified template for automated testing (without template-level triggers)
-# For production, use the full template via Web UI
-TEMPLATE_FILE="${ZABBIX_TEMPLATE_FILE:-$SCRIPT_DIR/zabbix-template-azure-storage-monitor-7.0-test.xml}"
+# Use YAML template for automated testing (cleaner format, better compatibility)
+# For production Web UI import, you can use either YAML or XML format
+TEMPLATE_FILE="${ZABBIX_TEMPLATE_FILE:-$SCRIPT_DIR/zabbix-template-azure-storage-monitor-7.0.yaml}"
 
 # Colors
 RED='\033[0;31m'
@@ -183,6 +183,16 @@ zabbix_authenticate() {
 import_template() {
     log_info "Importing Azure Storage Cost Monitor template..."
 
+    # Detect template format
+    local template_format="xml"
+    if [[ "$TEMPLATE_FILE" == *.yaml ]] || [[ "$TEMPLATE_FILE" == *.yml ]]; then
+        template_format="yaml"
+    elif [[ "$TEMPLATE_FILE" == *.json ]]; then
+        template_format="json"
+    fi
+
+    log_info "Detected template format: $template_format"
+
     # Read template file and escape for JSON
     local template_content
     template_content=$(cat "$TEMPLATE_FILE" | jq -Rs .)
@@ -194,7 +204,7 @@ import_template() {
             \"jsonrpc\": \"2.0\",
             \"method\": \"configuration.import\",
             \"params\": {
-                \"format\": \"xml\",
+                \"format\": \"$template_format\",
                 \"rules\": {
                     \"templates\": {
                         \"createMissing\": true,

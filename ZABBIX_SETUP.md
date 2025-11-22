@@ -4,27 +4,54 @@ This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test th
 
 ## Template Versions
 
-The repository includes two template versions:
+The repository includes three template formats:
 
-1. **zabbix-template-azure-storage-monitor-7.0.xml** - Full production template
+1. **zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format (recommended) ⭐
+   - **Modern, clean YAML format**
    - Includes all items, discovery rules, and triggers
-   - **Import via Zabbix Web UI** for production use
+   - Smaller file size (13K vs 24K XML)
+   - Better readability and maintainability
+   - UUID format: Without dashes (32 chars - API compatible)
+   - Compatible with both Web UI and API import
+   - **Used by default in automated tests**
+
+2. **zabbix-template-azure-storage-monitor-7.0.xml** - XML format (Web UI)
+   - Full production template in XML format
+   - Includes all items, discovery rules, and triggers
    - UUID format: With dashes (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+   - Best for Web UI import
    - Contains triggers inside items (Zabbix 7.0 structure)
 
-2. **zabbix-template-azure-storage-monitor-7.0-test.xml** - Simplified test template
-   - Used by automated integration tests via **Zabbix API**
-   - UUID format: Without dashes (32 chars: `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`)
-   - Contains items without triggers for simpler testing
-   - Suitable for CI/CD and automated testing
+3. **zabbix-template-azure-storage-monitor-7.0-test.xml** - Simplified XML (deprecated)
+   - Legacy simplified test template
+   - UUID format: Without dashes (32 chars)
+   - Use YAML version instead for new deployments
 
-**Important:** Zabbix has different UUID requirements:
-- **Web UI import**: Accepts UUIDs with or without dashes
-- **API import**: Requires UUIDs **without dashes** (32 characters)
+**Format Comparison:**
 
-**Note:** The automated test script uses the simplified template by default. To test the full template, set `ZABBIX_TEMPLATE_FILE` environment variable:
+| Format | Size | API Import | Web UI Import | Readability | Recommended |
+|--------|------|------------|---------------|-------------|-------------|
+| YAML   | 13K  | ✅ Yes     | ✅ Yes        | ⭐⭐⭐       | ✅ **Yes**  |
+| XML    | 24K  | ⚠️ Complex | ✅ Yes        | ⭐⭐         | For Web UI only |
+| Test XML | 8K | ✅ Yes     | ✅ Yes        | ⭐           | ❌ Deprecated |
+
+**Important UUID Notes:**
+- **YAML format**: UUIDs without dashes (works for both API and Web UI)
+- **XML format (full)**: UUIDs with dashes (best for Web UI)
+- **XML format (test)**: UUIDs without dashes (API compatible)
+
+**Usage Examples:**
 ```bash
-ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0.xml ./test-zabbix-integration.sh
+# Use YAML template (recommended, default)
+./test-zabbix-integration.sh
+
+# Use full XML template
+ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0.xml \
+  ./test-zabbix-integration.sh
+
+# Use legacy test XML
+ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0-test.xml \
+  ./test-zabbix-integration.sh
 ```
 
 ## Prerequisites
