@@ -8,13 +8,19 @@ The repository includes two template versions:
 
 1. **zabbix-template-azure-storage-monitor-7.0.xml** - Full production template
    - Includes all items, discovery rules, and triggers
-   - Import via Zabbix Web UI for production use
-   - Contains template-level triggers for alerts
+   - **Import via Zabbix Web UI** for production use
+   - UUID format: With dashes (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+   - Contains triggers inside items (Zabbix 7.0 structure)
 
 2. **zabbix-template-azure-storage-monitor-7.0-test.xml** - Simplified test template
-   - Used by automated integration tests
-   - Contains items without template-level triggers
+   - Used by automated integration tests via **Zabbix API**
+   - UUID format: Without dashes (32 chars: `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`)
+   - Contains items without triggers for simpler testing
    - Suitable for CI/CD and automated testing
+
+**Important:** Zabbix has different UUID requirements:
+- **Web UI import**: Accepts UUIDs with or without dashes
+- **API import**: Requires UUIDs **without dashes** (32 characters)
 
 **Note:** The automated test script uses the simplified template by default. To test the full template, set `ZABBIX_TEMPLATE_FILE` environment variable:
 ```bash
