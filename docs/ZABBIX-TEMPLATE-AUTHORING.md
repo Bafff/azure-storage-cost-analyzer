@@ -18,6 +18,7 @@ Use this checklist to build or modify Zabbix 7.0 templates without getting block
 - DO keep `delay` numeric strings (`'0'`, `1h`, etc.) and history/trends with duration suffix.  
 - DO mirror per‑subscription keys in the sender script to the template keys exactly.  
 - DO include valuemaps when items expose coded numeric status.
+- DO add per‑LLD overrideable thresholds for triggers that can vary by entity using contextual macros, e.g. `{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}`.
 
 ## DON’Ts
 - DON’T mix dashed and non‑dashed UUIDs in the same YAML template.  
@@ -33,6 +34,10 @@ Use this checklist to build or modify Zabbix 7.0 templates without getting block
 - `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]`
 - `azure.storage.subscription.invalid_tags[{#SUBSCRIPTION_ID}]`
 - `azure.storage.subscription.excluded_pending_review[{#SUBSCRIPTION_ID}]`
+
+## Example per‑LLD overrideable macro pattern
+- Trigger expression: `last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}`
+- Default macro: `{$UNATTACHED_DISK_THRESHOLD}=0` (alert on any), override specific subscriptions with `{$UNATTACHED_DISK_THRESHOLD:"<SUBSCRIPTION_ID>"}=20`, etc.
 
 ## One‑liner to regen UUIDs (YAML)
 ```bash
