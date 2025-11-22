@@ -11,7 +11,7 @@ The repository includes three template formats:
    - Includes all items, discovery rules, and triggers
    - Smaller file size (13K vs 24K XML)
    - Better readability and maintainability
-   - UUID format: Without dashes (32 chars - API compatible)
+   - UUID format: **With dashes** (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
    - Compatible with both Web UI and API import
    - **Used by default in automated tests**
 
@@ -36,9 +36,11 @@ The repository includes three template formats:
 | Test XML | 8K | ✅ Yes     | ✅ Yes        | ⭐           | ❌ Deprecated |
 
 **Important UUID Notes:**
-- **YAML format**: UUIDs without dashes (works for both API and Web UI)
+- **YAML format**: UUIDs **with dashes** (UUID v4 format - Web UI compatible)
 - **XML format (full)**: UUIDs with dashes (best for Web UI)
 - **XML format (test)**: UUIDs without dashes (API compatible)
+
+**Note:** Zabbix Web UI requires UUID v4 format (with dashes). API import is more flexible and accepts both formats.
 
 **Usage Examples:**
 ```bash
