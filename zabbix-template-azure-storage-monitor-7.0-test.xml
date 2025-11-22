@@ -3,13 +3,13 @@
     <version>7.0</version>
     <template_groups>
         <template_group>
-            <uuid>7df96b18f2304952b5c3a7c1c2e4c5e1</uuid>
+            <uuid>7df96b18-f230-4952-b5c3-a7c1c2e4c5e1</uuid>
             <name>Templates/Cloud</name>
         </template_group>
     </template_groups>
     <templates>
         <template>
-            <uuid>a1b2c3d4e5f6789012345678901234ab</uuid>
+            <uuid>a1b2c3d4-e5f6-7890-1234-5678901234ab</uuid>
             <template>Azure Storage Cost Monitor</template>
             <name>Azure Storage Cost Monitor</name>
             <description>Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
@@ -38,7 +38,7 @@ Usage:
             <items>
                 <!-- Aggregated Metrics -->
                 <item>
-                    <uuid>b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6</uuid>
+                    <uuid>b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6</uuid>
                     <name>Total Monthly Waste (All Subscriptions)</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.all.total_waste.monthly</key>
@@ -60,7 +60,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7</uuid>
+                    <uuid>c2d3e4f5-a6b7-c8d9-e0f1-a2b3c4d5e6f7</uuid>
                     <name>Total Unattached Disks Count</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.all.total_disks</key>
@@ -78,7 +78,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8</uuid>
+                    <uuid>d3e4f5a6-b7c8-d9e0-f1a2-b3c4d5e6f7a8</uuid>
                     <name>Total Snapshots Count</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.all.total_snapshots</key>
@@ -96,7 +96,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9</uuid>
+                    <uuid>e4f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8b9</uuid>
                     <name>Subscriptions Scanned</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.all.subscriptions_scanned</key>
@@ -113,7 +113,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0</uuid>
+                    <uuid>f5a6b7c8-d9e0-f1a2-b3c4-d5e6f7a8b9c0</uuid>
                     <name>Last Run Timestamp</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.script.last_run_timestamp</key>
@@ -130,7 +130,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1</uuid>
+                    <uuid>a6b7c8d9-e0f1-a2b3-c4d5-e6f7a8b9c0d1</uuid>
                     <name>Script Execution Time</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.script.execution_time_seconds</key>
@@ -148,7 +148,7 @@ Usage:
                     </tags>
                 </item>
                 <item>
-                    <uuid>b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2</uuid>
+                    <uuid>b7c8d9e0-f1a2-b3c4-d5e6-f7a8b9c0d1e2</uuid>
                     <name>Last Run Status</name>
                     <type>ZABBIX_ACTIVE</type>
                     <key>azure.storage.script.last_run_status</key>
@@ -169,7 +169,7 @@ Usage:
             </items>
             <valuemaps>
                 <valuemap>
-                    <uuid>b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4</uuid>
+                    <uuid>b9c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4</uuid>
                     <name>Script Status</name>
                     <mappings>
                         <mapping>
