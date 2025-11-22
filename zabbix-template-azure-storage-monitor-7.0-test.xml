@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>7.0</version>
+    <template_groups>
+        <template_group>
+            <uuid>7df96b18f2304952b5c3a7c1c2e4c5e1</uuid>
+            <name>Templates/Cloud</name>
+        </template_group>
+    </template_groups>
+    <templates>
+        <template>
+            <uuid>a1b2c3d4e5f6789012345678901234ab</uuid>
+            <template>Azure Storage Cost Monitor</template>
+            <name>Azure Storage Cost Monitor</name>
+            <description>Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
+
+Script: azure-storage-cost-analyzer.sh
+Version: 1.0
+Compatible: Zabbix 7.0+
+
+This is a simplified version for automated testing.
+For production use with full triggers, import via Web UI.
+
+Usage:
+  ./azure-storage-cost-analyzer.sh unused-report \
+    --subscriptions all \
+    --days 30 \
+    --output-format json \
+    --zabbix-send \
+    --zabbix-server your-zabbix-server.com \
+    --zabbix-host azure-storage-monitor
+</description>
+            <groups>
+                <group>
+                    <name>Templates/Cloud</name>
+                </group>
+            </groups>
+            <items>
+                <!-- Aggregated Metrics -->
+                <item>
+                    <uuid>b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6</uuid>
+                    <name>Total Monthly Waste (All Subscriptions)</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_waste.monthly</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>FLOAT</value_type>
+                    <units>USD</units>
+                    <description>Total monthly cost of unattached disks and snapshots across all Azure subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                        <tag>
+                            <tag>cloud</tag>
+                            <value>azure</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7</uuid>
+                    <name>Total Unattached Disks Count</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_disks</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>disks</units>
+                    <description>Total number of unattached disks across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8</uuid>
+                    <name>Total Snapshots Count</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.total_snapshots</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>snapshots</units>
+                    <description>Total number of snapshots across all subscriptions</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>storage</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9</uuid>
+                    <name>Subscriptions Scanned</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.all.subscriptions_scanned</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Number of Azure subscriptions scanned in last run</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0</uuid>
+                    <name>Last Run Timestamp</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.last_run_timestamp</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <value_type>UNSIGNED</value_type>
+                    <units>unixtime</units>
+                    <description>Unix timestamp of last successful script execution</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1</uuid>
+                    <name>Script Execution Time</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.execution_time_seconds</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <trends>365d</trends>
+                    <value_type>UNSIGNED</value_type>
+                    <units>s</units>
+                    <description>Script execution duration in seconds</description>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>performance</value>
+                        </tag>
+                    </tags>
+                </item>
+                <item>
+                    <uuid>b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2</uuid>
+                    <name>Last Run Status</name>
+                    <type>ZABBIX_ACTIVE</type>
+                    <key>azure.storage.script.last_run_status</key>
+                    <delay>0</delay>
+                    <history>90d</history>
+                    <value_type>UNSIGNED</value_type>
+                    <description>Script execution status (0=success, 1=warning, 2=error)</description>
+                    <valuemap>
+                        <name>Script Status</name>
+                    </valuemap>
+                    <tags>
+                        <tag>
+                            <tag>component</tag>
+                            <value>monitoring</value>
+                        </tag>
+                    </tags>
+                </item>
+            </items>
+            <valuemaps>
+                <valuemap>
+                    <uuid>b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4</uuid>
+                    <name>Script Status</name>
+                    <mappings>
+                        <mapping>
+                            <value>0</value>
+                            <newvalue>Success</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>1</value>
+                            <newvalue>Warning</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>2</value>
+                            <newvalue>Error</newvalue>
+                        </mapping>
+                    </mappings>
+                </valuemap>
+            </valuemaps>
+        </template>
+    </templates>
+</zabbix_export>

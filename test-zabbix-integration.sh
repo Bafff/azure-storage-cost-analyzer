@@ -12,7 +12,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.zabbix.yml"
-TEMPLATE_FILE="$SCRIPT_DIR/zabbix-template-azure-storage-monitor-7.0.xml"
+# Use simplified template for automated testing (without template-level triggers)
+# For production, use the full template via Web UI
+TEMPLATE_FILE="${ZABBIX_TEMPLATE_FILE:-$SCRIPT_DIR/zabbix-template-azure-storage-monitor-7.0-test.xml}"
 
 # Colors
 RED='\033[0;31m'

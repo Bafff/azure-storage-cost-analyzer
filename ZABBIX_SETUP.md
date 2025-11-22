@@ -2,6 +2,25 @@
 
 This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test the Azure Storage Cost Monitor template integration.
 
+## Template Versions
+
+The repository includes two template versions:
+
+1. **zabbix-template-azure-storage-monitor-7.0.xml** - Full production template
+   - Includes all items, discovery rules, and triggers
+   - Import via Zabbix Web UI for production use
+   - Contains template-level triggers for alerts
+
+2. **zabbix-template-azure-storage-monitor-7.0-test.xml** - Simplified test template
+   - Used by automated integration tests
+   - Contains items without template-level triggers
+   - Suitable for CI/CD and automated testing
+
+**Note:** The automated test script uses the simplified template by default. To test the full template, set `ZABBIX_TEMPLATE_FILE` environment variable:
+```bash
+ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0.xml ./test-zabbix-integration.sh
+```
+
 ## Prerequisites
 
 Before starting, ensure you have the following installed:
