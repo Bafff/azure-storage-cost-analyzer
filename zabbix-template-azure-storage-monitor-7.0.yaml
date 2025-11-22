@@ -312,7 +312,7 @@ zabbix_export:
     macros:
     - macro: '{$UNATTACHED_DISK_THRESHOLD}'
       value: '0'
-      description: Warning threshold for unattached disks per subscription (set >0 to enable; override per subscription with {$UNATTACHED_DISK_THRESHOLD:\"<SUBSCRIPTION_ID>\"})
+      description: Warning threshold for unattached disks per subscription (default 0 = alert on any unattached disk; override per subscription with {$UNATTACHED_DISK_THRESHOLD:"<SUBSCRIPTION_ID>"}; set very high to mute)
     valuemaps:
     - uuid: ab7c2574a348422597ada338f9098c2a
       name: Script Status
