@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=SC2028,SC3037
 
 # Integration Test for Zabbix 7.0.1 with Azure Storage Cost Monitor Template
 # This script:
@@ -40,19 +39,19 @@ TEMPLATE_ID=""
 
 # Logging functions
 log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    printf "%b[INFO]%b %s\n" "${BLUE}" "${NC}" "$1"
 }
 
 log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    printf "%b[SUCCESS]%b %s\n" "${GREEN}" "${NC}" "$1"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    printf "%b[ERROR]%b %s\n" "${RED}" "${NC}" "$1"
 }
 
 log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    printf "%b[WARNING]%b %s\n" "${YELLOW}" "${NC}" "$1"
 }
 
 # Cleanup function
