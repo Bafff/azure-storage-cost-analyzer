@@ -332,8 +332,8 @@ zabbix_export:
           Threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
 
           View disk details (names, resource groups, costs):
-          {$ZABBIX_URL}/zabbix.php?action=latest.view&filter_name=Disks+Details
-        url: '{$ZABBIX_URL}/zabbix.php?action=latest.view&filter_name=Disks+Details'
+          {$ZABBIX_URL}/zabbix.php?action=latest.view&filter_key=disk_details
+        url: '{$ZABBIX_URL}/zabbix.php?action=latest.view&filter_key=disk_details'
         url_name: 'Check disks'
         tags:
         - tag: scope
