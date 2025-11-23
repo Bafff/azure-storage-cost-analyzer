@@ -1598,6 +1598,12 @@ collect_subscription_metrics() {
     local total_invalid_tags=$((disk_invalid_tags + snapshot_invalid_tags))
     local total_excluded_pending=$((disk_excluded_pending + snapshot_excluded_pending))
 
+    # Prepare disk details for output (escape for JSON)
+    local disk_details_json="[]"
+    if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
+        disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
+    fi
+
     # Output JSON
     cat <<EOF
 {
@@ -1615,7 +1621,8 @@ collect_subscription_metrics() {
     "total_waste_annual": $(printf "%.2f" "$total_waste_annual"),
     "invalid_tags": $total_invalid_tags,
     "excluded_pending_review": $total_excluded_pending
-  }
+  },
+  "disk_details": $disk_details_json
 }
 EOF
 
@@ -1918,6 +1925,54 @@ send_to_zabbix() {
     fi
 }
 
+# Function to format disk details as human-readable text
+# Usage: format_disk_details_text "disk_details_json" "max_disks"
+# Returns: Formatted text string
+format_disk_details_text() {
+    local disk_details_json="$1"
+    local max_disks="${2:-10}"
+
+    # Check if disk details exist
+    if [[ -z "$disk_details_json" ]] || [[ "$disk_details_json" == "[]" ]] || [[ "$disk_details_json" == "null" ]]; then
+        echo "No unattached disks"
+        return 0
+    fi
+
+    # Count total disks
+    local total_count=$(echo "$disk_details_json" | jq 'length' 2>/dev/null || echo "0")
+
+    if [[ "$total_count" -eq 0 ]]; then
+        echo "No unattached disks"
+        return 0
+    fi
+
+    # Format top N disks
+    local output=""
+    local count=0
+
+    while IFS= read -r disk; do
+        ((count++))
+        if [[ $count -gt $max_disks ]]; then
+            break
+        fi
+
+        local name=$(echo "$disk" | jq -r '.name // "N/A"')
+        local rg=$(echo "$disk" | jq -r '.resource_group // "N/A"')
+        local size=$(echo "$disk" | jq -r '.size_gb // "N/A"')
+        local sku=$(echo "$disk" | jq -r '.sku // "N/A"')
+
+        output+="RG: $rg | Disk: $name | Size: ${size}GB | SKU: $sku"$'\n'
+    done < <(echo "$disk_details_json" | jq -c '.[]' 2>/dev/null)
+
+    # Add summary if there are more disks
+    if [[ "$total_count" -gt "$max_disks" ]]; then
+        local remaining=$((total_count - max_disks))
+        output+="... and $remaining more disk(s)"$'\n'
+    fi
+
+    echo -n "$output"
+}
+
 # Function to create Zabbix batch file with all metrics
 # Usage: create_zabbix_batch_file "hostname" "timestamp" "metrics_json"
 # Returns: Path to batch file
@@ -1965,6 +2020,17 @@ create_zabbix_batch_file() {
                 echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste" >> "$batch_file"
                 echo "$hostname azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks" >> "$batch_file"
                 echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots" >> "$batch_file"
+
+                # Send disk details (TEXT item)
+                local disk_details_json=$(echo "$metrics_json" | jq -r ".by_subscription[$i].disk_details // []")
+                if [[ -n "$disk_details_json" ]] && [[ "$disk_details_json" != "[]" ]]; then
+                    local disk_details_text=$(format_disk_details_text "$disk_details_json" 10)
+                    # Escape newlines for Zabbix sender (replace with literal \n)
+                    disk_details_text=$(echo "$disk_details_text" | sed ':a;N;$!ba;s/\n/\\n/g')
+                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"$disk_details_text\"" >> "$batch_file"
+                else
+                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"No unattached disks\"" >> "$batch_file"
+                fi
             fi
         done
     fi

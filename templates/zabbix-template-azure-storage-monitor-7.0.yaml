@@ -289,6 +289,20 @@ zabbix_export:
           value: "{#SUBSCRIPTION_NAME}"
         - tag: type
           value: tag-management
+      - uuid: 8f3a5c9d2e7b4a1f9c6d8e2a5b7f3c1d
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks Details'
+        type: TRAP
+        key: azure.storage.subscription.disk_details[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: '0'
+        value_type: TEXT
+        description: 'Detailed list of unattached disks in subscription {#SUBSCRIPTION_NAME}: Resource Group, Disk Name, Size, Monthly Cost'
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+        - tag: type
+          value: resources
       trigger_prototypes:
       - uuid: 63fa9f275ba74a1bae87e5e11d16c4ce
         expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>100
@@ -313,7 +327,14 @@ zabbix_export:
         name: 'Unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
-        description: 'Unattached disks detected in subscription {#SUBSCRIPTION_NAME} (threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"})'
+        description: |
+          {ITEM.LASTVALUE} unattached disk(s) detected in subscription {#SUBSCRIPTION_NAME}
+          Threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
+
+          View disk details (names, resource groups, costs):
+          {$ZABBIX_URL}/zabbix.php?action=latest.view&filter_name=Disks+Details
+        url: '{$ZABBIX_URL}/zabbix.php?action=latest.view&filter_name=Disks+Details'
+        url_name: 'Check disks'
         tags:
         - tag: scope
           value: resources
