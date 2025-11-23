@@ -1140,7 +1140,10 @@ filter_resources_by_tags() {
         local rg_excluded=false
         if [[ -n "$exclude_rgs" ]]; then
             local resource_group=$(echo "$resource" | jq -r '.ResourceGroup // ""' 2>/dev/null)
-            local time_created=$(echo "$resource" | jq -r '.Created // ""' 2>/dev/null)
+            # Resource Graph projections often rename properties.timeCreated to "Created" for readability,
+            # but some queries return the original "timeCreated" field. Accept both shapes so RG-based
+            # age filtering works regardless of how the creation timestamp is surfaced.
+            local time_created=$(echo "$resource" | jq -r '.Created // .timeCreated // ""' 2>/dev/null)
 
             if [[ -n "$resource_group" ]]; then
                 local rg_exclusion_result
