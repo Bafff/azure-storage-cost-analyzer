@@ -6,6 +6,7 @@ CLI tooling to discover and quantify wasted Azure storage spend (unattached disk
 - Multi-subscription scanning with aggregated JSON/Zabbix/Text output.
 - Batch cost queries via Azure Cost Management REST API for speed and reliability.
 - Tag-based exclusion (`Resource-Next-Review-Date`) to defer approved resources until a review date.
+- Resource Group exclusion with age-based anomaly detection (e.g., exclude ephemeral Databricks resources, but alert on old orphaned ones).
 - Zabbix sender integration (metrics and LLD) and ready-to-run Azure Pipelines YAML.
 - Configurable via INI (`azure-storage-monitor.conf.example`) or CLI flags.
 

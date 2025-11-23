@@ -46,6 +46,8 @@ CONFIG_SORT_BY=""
 CONFIG_REVIEW_DATE_TAG_NAME=""
 CONFIG_REVIEW_DATE_FORMAT=""
 CONFIG_EXCLUDE_PENDING_REVIEW=""
+CONFIG_EXCLUDE_RESOURCE_GROUPS=""
+CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS=""
 
 # Exit codes (standardized for monitoring integration)
 readonly EXIT_SUCCESS=0           # Success - no issues found or operation completed successfully
@@ -687,6 +689,8 @@ parse_config_file() {
                         review_date_tag_name) CONFIG_REVIEW_DATE_TAG_NAME="$value" ;;
                         review_date_format) CONFIG_REVIEW_DATE_FORMAT="$value" ;;
                         exclude_pending_review) CONFIG_EXCLUDE_PENDING_REVIEW="$value" ;;
+                        exclude_resource_groups) CONFIG_EXCLUDE_RESOURCE_GROUPS="$value" ;;
+                        exclude_rg_age_threshold_days) CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS="$value" ;;
                     esac
                     ;;
             esac
@@ -955,8 +959,105 @@ check_resource_tag_status() {
     fi
 }
 
-# Function to filter resources array by tag status
-# Args: resources_json, tag_name, tag_format, skip_tagged_mode, show_tagged_only_mode
+# Function to calculate resource age in days based on timeCreated field
+# Args: time_created (ISO 8601 timestamp from Azure)
+# Returns: age in days (integer) or -1 if parsing fails
+# Output: age in days on stdout
+calculate_resource_age_days() {
+    local time_created="$1"
+
+    # Empty timestamp
+    if [[ -z "$time_created" ]]; then
+        echo "-1"
+        return 1
+    fi
+
+    # Parse ISO 8601 timestamp to epoch seconds
+    # Azure format: "2024-10-15T10:30:45.1234567Z" or "2024-10-15T10:30:45Z"
+    local created_epoch
+    created_epoch=$(date -d "$time_created" +%s 2>/dev/null)
+
+    if [[ $? -ne 0 ]]; then
+        # Fallback: try removing fractional seconds if present
+        local time_created_simplified
+        time_created_simplified=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/')
+        created_epoch=$(date -d "$time_created_simplified" +%s 2>/dev/null)
+
+        if [[ $? -ne 0 ]]; then
+            echo "-1"
+            return 1
+        fi
+    fi
+
+    # Get current UTC time in epoch seconds
+    local now_epoch
+    now_epoch=$(date -u +%s)
+
+    # Calculate age in seconds, then convert to days
+    local age_seconds=$((now_epoch - created_epoch))
+    local age_days=$((age_seconds / 86400))
+
+    echo "$age_days"
+    return 0
+}
+
+# Function to check if resource should be excluded based on RG exclusion rules
+# Args: resource_group, time_created, exclude_rgs (comma-separated), age_threshold_days
+# Returns: 0 if should be excluded, 1 if should be included
+# Output: JSON with exclusion decision
+check_rg_exclusion() {
+    local resource_group="$1"
+    local time_created="$2"
+    local exclude_rgs="${3:-}"
+    local age_threshold_days="${4:-30}"
+
+    # If no exclusion list, include all
+    if [[ -z "$exclude_rgs" ]]; then
+        echo '{"should_exclude":false,"reason":"no_exclusion_list"}'
+        return 1
+    fi
+
+    # Check if resource group is in exclusion list (case-insensitive match)
+    local is_excluded=false
+    IFS=',' read -ra EXCLUDE_ARRAY <<< "$exclude_rgs"
+    for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
+        # Trim whitespace
+        excluded_rg=$(echo "$excluded_rg" | xargs)
+        if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+            is_excluded=true
+            break
+        fi
+    done
+
+    # If not in exclusion list, include
+    if [[ "$is_excluded" == "false" ]]; then
+        echo '{"should_exclude":false,"reason":"not_in_exclusion_list"}'
+        return 1
+    fi
+
+    # Resource is in exclusion list - check age
+    local age_days
+    age_days=$(calculate_resource_age_days "$time_created")
+
+    # If age calculation failed, include (safe default)
+    if [[ $age_days -lt 0 ]]; then
+        echo '{"should_exclude":false,"reason":"age_calculation_failed","age_days":-1}'
+        return 1
+    fi
+
+    # If resource is older than threshold, include (anomaly detection)
+    if [[ $age_days -ge $age_threshold_days ]]; then
+        echo '{"should_exclude":false,"reason":"age_exceeds_threshold","age_days":'"$age_days"',"threshold":'"$age_threshold_days"'}'
+        return 1
+    fi
+
+    # Resource is in exclusion list and younger than threshold - exclude
+    echo '{"should_exclude":true,"reason":"excluded_rg_recent","age_days":'"$age_days"',"threshold":'"$age_threshold_days"'}'
+    return 0
+}
+
+# Function to filter resources array by tag status and RG exclusion
+# Args: resources_json, tag_name, tag_format, skip_tagged_mode, show_tagged_only_mode, exclude_rgs, age_threshold_days
 # Returns: JSON object with filtered resources and statistics
 # Output format:
 # {
@@ -966,7 +1067,8 @@ check_resource_tag_status() {
 #     "included": N,
 #     "excluded_pending": N,
 #     "excluded_expired": N,
-#     "invalid_tags": N
+#     "invalid_tags": N,
+#     "excluded_rg": N
 #   }
 # }
 filter_resources_by_tags() {
@@ -975,6 +1077,8 @@ filter_resources_by_tags() {
     local tag_format="${3:-YYYY.MM.DD}"
     local skip_tagged="${4:-false}"
     local show_tagged_only="${5:-false}"
+    local exclude_rgs="${6:-}"
+    local age_threshold_days="${7:-30}"
 
     # If tag filtering is disabled, return all resources
     if [[ -z "$tag_name" ]]; then
@@ -1030,10 +1134,33 @@ filter_resources_by_tags() {
     local excluded_pending=0
     local excluded_expired=0
     local invalid_tags=0
+    local excluded_rg=0
     local included=0
 
     while IFS= read -r resource; do
         ((total++))
+
+        # Check RG exclusion first (if configured)
+        local rg_excluded=false
+        if [[ -n "$exclude_rgs" ]]; then
+            local resource_group=$(echo "$resource" | jq -r '.ResourceGroup // ""' 2>/dev/null)
+            local time_created=$(echo "$resource" | jq -r '.TimeCreated // ""' 2>/dev/null)
+
+            if [[ -n "$resource_group" ]]; then
+                local rg_exclusion_result
+                rg_exclusion_result=$(check_rg_exclusion "$resource_group" "$time_created" "$exclude_rgs" "$age_threshold_days" 2>/dev/null)
+
+                local should_exclude_rg=$(echo "$rg_exclusion_result" | jq -r '.should_exclude' 2>/dev/null)
+
+                # Annotate resource with RG exclusion status
+                resource=$(echo "$resource" | jq --argjson rgstatus "$rg_exclusion_result" '. + {RgExclusionDetail: $rgstatus}' 2>/dev/null)
+
+                if [[ "$should_exclude_rg" == "true" ]]; then
+                    rg_excluded=true
+                    ((excluded_rg++))
+                fi
+            fi
+        fi
 
         local tags_json=$(echo "$resource" | jq -c '.Tags // {}' 2>/dev/null)
         local tag_status_result
@@ -1062,14 +1189,20 @@ filter_resources_by_tags() {
         # Apply filtering logic
         local include_resource=true
 
-        if [[ "$skip_tagged" == "true" ]]; then
+        # First check RG exclusion (highest priority)
+        if [[ "$rg_excluded" == "true" ]]; then
+            include_resource=false
+        fi
+
+        # Then check tag-based filtering (if not already excluded by RG)
+        if [[ "$include_resource" == "true" && "$skip_tagged" == "true" ]]; then
             # Skip resources with valid future review dates
             if [[ "$should_exclude" == "true" ]]; then
                 include_resource=false
             fi
         fi
 
-        if [[ "$show_tagged_only" == "true" ]]; then
+        if [[ "$include_resource" == "true" && "$show_tagged_only" == "true" ]]; then
             # Show only resources with tags (valid, invalid, or expired)
             if [[ "$tag_status_type" == "none" ]]; then
                 include_resource=false
@@ -1100,14 +1233,16 @@ filter_resources_by_tags() {
         --argjson included "$included" \
         --argjson pending "$excluded_pending" \
         --argjson expired "$excluded_expired" \
-        --argjson invalid "$invalid_tags" '{
+        --argjson invalid "$invalid_tags" \
+        --argjson excluded_rg "$excluded_rg" '{
         resources: .,
         stats: {
             total: $total,
             included: $included,
             excluded_pending: $pending,
             excluded_expired: $expired,
-            invalid_tags: $invalid
+            invalid_tags: $invalid,
+            excluded_rg: $excluded_rg
         }
     }' 2>/dev/null
 }
@@ -1457,7 +1592,9 @@ collect_subscription_metrics() {
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
-            "false" 2>/dev/null)
+            "false" \
+            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -1533,7 +1670,9 @@ collect_subscription_metrics() {
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
-            "false" 2>/dev/null)
+            "false" \
+            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -2764,7 +2903,9 @@ analyze_unattached_disks_only() {
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
-            "$show_tagged_only" 2>/dev/null)
+            "$show_tagged_only" \
+            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         tag_filter_stats="$filtered_result"
@@ -3066,7 +3207,9 @@ generate_unused_resources_report() {
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
-            "$show_tagged_only" 2>/dev/null)
+            "$show_tagged_only" \
+            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_tag_filter_stats="$filtered_result"
@@ -3293,7 +3436,9 @@ generate_unused_resources_report() {
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
-            "$show_tagged_only" 2>/dev/null)
+            "$show_tagged_only" \
+            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_tag_filter_stats="$filtered_result"
@@ -4050,6 +4195,26 @@ main() {
                 resource_group="$2"
                 shift 2
                 ;;
+            --exclude-resource-groups)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --exclude-resource-groups requires comma-separated resource group names"
+                    usage
+                fi
+                CONFIG_EXCLUDE_RESOURCE_GROUPS="$2"
+                shift 2
+                ;;
+            --exclude-rg-age-threshold-days)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --exclude-rg-age-threshold-days requires a number"
+                    usage
+                fi
+                if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --exclude-rg-age-threshold-days must be a positive integer"
+                    exit $EXIT_CONFIG_ERROR
+                fi
+                CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS="$2"
+                shift 2
+                ;;
             *)
                 # If not a flag, treat as resource_group (only if not already set via flag)
                 # This maintains backward compatibility with positional parameter
@@ -4065,6 +4230,20 @@ main() {
     [[ -n "$cli_critical_threshold" ]] && CONFIG_THRESHOLD_CRITICAL_MONTHLY="$cli_critical_threshold"
     [[ -n "$cli_warning_disk_threshold" ]] && CONFIG_THRESHOLD_WARNING_DISK_COUNT="$cli_warning_disk_threshold"
     [[ -n "$cli_critical_disk_threshold" ]] && CONFIG_THRESHOLD_CRITICAL_DISK_COUNT="$cli_critical_disk_threshold"
+
+    # Validate resource group filtering configuration
+    if [[ -n "$resource_group" && -n "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" ]]; then
+        # Check if the include RG is also in the exclude list
+        IFS=',' read -ra EXCLUDE_ARRAY <<< "${CONFIG_EXCLUDE_RESOURCE_GROUPS}"
+        for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
+            excluded_rg=$(echo "$excluded_rg" | xargs)
+            if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+                echo "Error: Resource group '$resource_group' appears in both include (--resource-group) and exclude (--exclude-resource-groups) lists"
+                echo "This configuration conflict is not allowed. Please specify the resource group in only one list."
+                exit $EXIT_CONFIG_ERROR
+            fi
+        done
+    fi
 
     if [[ -z "$start_date" && -z "$end_date" && -n "$CONFIG_DATE_RANGE_DAYS" ]]; then
         if [[ "$CONFIG_DATE_RANGE_DAYS" =~ ^[0-9]+$ ]]; then
