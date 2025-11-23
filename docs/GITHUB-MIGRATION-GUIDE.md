@@ -367,7 +367,7 @@ azure-storage-cost-analyzer/
 ├── azure-storage-cost-analyzer.sh  # Main script
 ├── azure-storage-monitor.conf.example  # Config template
 ├── azure-pipelines-storage-monitor.yml # ADO pipeline
-├── zabbix-template-azure-storage-monitor-7.0.xml  # Zabbix template
+├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
 ├── test-*.sh                          # Test scripts
 └── LICENSE                            # MIT or Apache 2.0
 ```

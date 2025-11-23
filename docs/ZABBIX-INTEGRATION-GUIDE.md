@@ -82,7 +82,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Zabbix version**: 7.0.5 or higher
 - **Zabbix Trapper port**: 10051 (default) open and accessible from Azure DevOps agents
-- **Template imported**: `zabbix-template-azure-storage-monitor-7.0.xml`
+- **Template imported**: `zabbix-template-azure-storage-monitor-7.0.yaml`
 - **Host created**: `azure-storage-monitor` (or custom name)
 
 ### 2. Azure DevOps Requirements
@@ -107,7 +107,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Log in to Zabbix frontend
 2. Navigate to: **Configuration** → **Templates**
 3. Click **Import**
-4. Upload `zabbix-template-azure-storage-monitor-7.0.xml`
+4. Upload `zabbix-template-azure-storage-monitor-7.0.yaml`
 5. Click **Import**
 
 ### Step 2: Create Host
@@ -339,9 +339,9 @@ Then run:
 
 | Metric Key | Type | Unit | Description |
 |------------|------|------|-------------|
-| `azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly` | Float | USD | Monthly waste for this subscription |
-| `azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count` | Unsigned | disks | Unattached disks in this subscription |
-| `azure.storage.subscription[{#SUBSCRIPTION_ID}].snapshot_count` | Unsigned | snapshots | Snapshots in this subscription |
+| `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]` | Float | USD | Monthly waste for this subscription |
+| `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]` | Unsigned | disks | Unattached disks in this subscription |
+| `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]` | Unsigned | snapshots | Snapshots in this subscription |
 
 ### Script Health Metrics
 

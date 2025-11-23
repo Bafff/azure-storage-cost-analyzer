@@ -1,0 +1,325 @@
+---
+zabbix_export:
+  version: '7.0'
+  template_groups:
+  - uuid: 96670b5476d0405887ff0e44faaac832
+    name: Templates/Cloud
+  templates:
+  - uuid: '05749663490c4538a46f8a0e8fc98ee5'
+    template: Azure Storage Cost Monitor
+    name: Azure Storage Cost Monitor
+    description: |
+      Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
+
+      Script: azure-storage-cost-analyzer.sh
+      Version: 1.0
+      Compatible: Zabbix 7.0+
+
+      Usage:
+        ./azure-storage-cost-analyzer.sh unused-report \
+          --subscriptions all \
+          --days 30 \
+          --output-format json \
+          --zabbix-send \
+          --zabbix-server your-zabbix-server.com \
+          --zabbix-host azure-storage-monitor
+    groups:
+    - name: Templates/Cloud
+    items:
+    - uuid: 915c5d50a7684913a9221dcb8fa1f565
+      name: Total Monthly Waste (All Subscriptions)
+      type: TRAP
+      key: azure.storage.all.total_waste.monthly
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: FLOAT
+      units: USD
+      description: Total monthly cost of unattached disks and snapshots across all
+        Azure subscriptions
+      tags:
+      - tag: component
+        value: storage
+      - tag: cloud
+        value: azure
+      triggers:
+      - uuid: 6a933dd06756462e979d9be2d97d2227
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>500
+        name: 'High total Azure storage waste: ${ITEM.LASTVALUE}'
+        priority: WARNING
+        description: Total monthly storage waste across all subscriptions exceeds
+          $500
+        tags:
+        - tag: scope
+          value: cost
+        - tag: cloud
+          value: azure
+      - uuid: 48821f2411d24cd7bd29a7e5f826b5d3
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>1000
+        name: 'Critical total Azure storage waste: ${ITEM.LASTVALUE}'
+        priority: HIGH
+        description: Total monthly storage waste across all subscriptions exceeds
+          $1000
+        tags:
+        - tag: scope
+          value: cost
+        - tag: cloud
+          value: azure
+    - uuid: 1ad110ca19f446848be010b89fd235cc
+      name: Total Unattached Disks Count
+      type: TRAP
+      key: azure.storage.all.total_disks
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      units: disks
+      description: Total number of unattached disks across all subscriptions
+      tags:
+      - tag: component
+        value: storage
+    - uuid: 355eb5cadf2d4b2695bf5e8b9c01e6dc
+      name: Total Snapshots Count
+      type: TRAP
+      key: azure.storage.all.total_snapshots
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      units: snapshots
+      description: Total number of snapshots across all subscriptions
+      tags:
+      - tag: component
+        value: storage
+    - uuid: 88584e1c3c07489d94fc9a70ea4b1fcc
+      name: Subscriptions Scanned
+      type: TRAP
+      key: azure.storage.all.subscriptions_scanned
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      description: Number of Azure subscriptions scanned in last run
+      tags:
+      - tag: component
+        value: monitoring
+    - uuid: 6d949bdd5e564d49a64730162242a7d4
+      name: Total Invalid Review Tags
+      type: TRAP
+      key: azure.storage.all.invalid_tags
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      units: tags
+      description: Number of resources with malformed review date tags across all
+        subscriptions
+      tags:
+      - tag: component
+        value: storage
+      - tag: type
+        value: tag-management
+      triggers:
+      - uuid: 1e7d3a6653fe4ce3904c5bd80e3cc31f
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.invalid_tags)>0
+        name: 'Invalid review date tags detected: {ITEM.LASTVALUE}'
+        priority: WARNING
+        description: 'Resources have malformed review date tags - check and correct
+          tag format. Expected format: YYYY.MM.DD'
+        tags:
+        - tag: scope
+          value: tag-management
+        - tag: cloud
+          value: azure
+    - uuid: fdee5c2bbf004f1c9356649402b43bb6
+      name: Resources Excluded (Pending Review)
+      type: TRAP
+      key: azure.storage.all.excluded_pending_review
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      units: resources
+      description: Resources excluded due to valid future review dates across all
+        subscriptions
+      tags:
+      - tag: component
+        value: storage
+      - tag: type
+        value: tag-management
+    - uuid: 74201bbc7c9444af9fb53c6a9e1c940f
+      name: Last Run Timestamp
+      type: TRAP
+      key: azure.storage.script.last_run_timestamp
+      delay: '0'
+      history: 90d
+      value_type: UNSIGNED
+      units: unixtime
+      description: Unix timestamp of last successful script execution
+      tags:
+      - tag: component
+        value: monitoring
+      triggers:
+      - uuid: 1f7d1b0723904bd89229453ca1655b6c
+        expression: now()-last(/Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)>86400
+        name: Azure storage monitor script hasn't run in 24 hours
+        priority: AVERAGE
+        description: The Azure storage cost analysis script hasn't reported data in
+          over 24 hours
+        tags:
+        - tag: scope
+          value: monitoring
+    - uuid: 69abdaefd60b4768acf237dcbd38f04e
+      name: Script Execution Time
+      type: TRAP
+      key: azure.storage.script.execution_time_seconds
+      delay: '0'
+      history: 90d
+      trends: 365d
+      value_type: UNSIGNED
+      units: s
+      description: Script execution duration in seconds
+      tags:
+      - tag: component
+        value: performance
+    - uuid: 6b14fd326be5492e9ac25fb6546be8ca
+      name: Last Run Status
+      type: TRAP
+      key: azure.storage.script.last_run_status
+      delay: '0'
+      history: 90d
+      value_type: UNSIGNED
+      description: Script execution status (0=success, 1=warning, 2=error)
+      valuemap:
+        name: Script Status
+      tags:
+      - tag: component
+        value: monitoring
+      triggers:
+      - uuid: d6b4906d7b614fbb94d04ba882f36b00
+        expression: last(/Azure Storage Cost Monitor/azure.storage.script.last_run_status)>0
+        name: Azure storage monitor script execution failed
+        priority: WARNING
+        description: Last execution of Azure storage cost analysis script reported
+          errors
+        tags:
+        - tag: scope
+          value: monitoring
+    discovery_rules:
+    - uuid: bf8a1711402d494c922c619b76cc5343
+      name: Azure Subscriptions Discovery
+      type: TRAP
+      key: azure.storage.discovery.subscriptions
+      delay: 1h
+      lifetime: 7d
+      description: Discovers Azure subscriptions for per-subscription monitoring
+      item_prototypes:
+      - uuid: 769b0b8b58ab48daba50e51576a3a2a7
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Monthly Waste'
+        type: TRAP
+        key: azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: 365d
+        value_type: FLOAT
+        units: USD
+        description: Monthly waste for subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+      - uuid: eb20f69969ec4f17a3e4bc82a8070b06
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks'
+        type: TRAP
+        key: azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: 365d
+        value_type: UNSIGNED
+        units: disks
+        description: Unattached disks in subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+      - uuid: 2571cdc61d094b72b19dbbea0e7ac45a
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Snapshots'
+        type: TRAP
+        key: azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: 365d
+        value_type: UNSIGNED
+        units: snapshots
+        description: Snapshots in subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+      - uuid: 1a1dff1acd504ad29ede2b50b031a16e
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Invalid Tags'
+        type: TRAP
+        key: azure.storage.subscription.invalid_tags[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: 365d
+        value_type: UNSIGNED
+        units: tags
+        description: Resources with malformed review date tags in subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+        - tag: type
+          value: tag-management
+      - uuid: 4fc24769d57c475a8c261cd993586f94
+        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Excluded Pending Review'
+        type: TRAP
+        key: azure.storage.subscription.excluded_pending_review[{#SUBSCRIPTION_ID}]
+        delay: '0'
+        history: 90d
+        trends: 365d
+        value_type: UNSIGNED
+        units: resources
+        description: Resources excluded due to valid future review dates in subscription
+          {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: subscription
+          value: "{#SUBSCRIPTION_NAME}"
+        - tag: type
+          value: tag-management
+      trigger_prototypes:
+      - uuid: 63fa9f275ba74a1bae87e5e11d16c4ce
+        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>100
+        name: 'High storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
+        priority: WARNING
+        description: Monthly storage waste exceeds $100 in subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: scope
+          value: cost
+      - uuid: 4ddf0227bd7543cfad9c160c7e5f71c2
+        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>250
+        name: 'Critical storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
+        priority: HIGH
+        description: Monthly storage waste exceeds $250 in subscription {#SUBSCRIPTION_NAME}
+        tags:
+        - tag: scope
+          value: cost
+      - uuid: ab5799dda73749a3b94b27a8827b1c59
+        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
+        name: 'Unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
+        priority: WARNING
+        description: 'Unattached disks detected in subscription {#SUBSCRIPTION_NAME} (threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"})'
+        tags:
+        - tag: scope
+          value: resources
+    macros:
+    - macro: '{$UNATTACHED_DISK_THRESHOLD}'
+      value: '0'
+      description: Warning threshold for unattached disks per subscription (default 0 = alert on any unattached disk; override per subscription with {$UNATTACHED_DISK_THRESHOLD:"<SUBSCRIPTION_ID>"}; set very high to mute)
+    valuemaps:
+    - uuid: ab7c2574a348422597ada338f9098c2a
+      name: Script Status
+      mappings:
+      - value: '0'
+        newvalue: Success
+      - value: '1'
+        newvalue: Warning
+      - value: '2'
+        newvalue: Error

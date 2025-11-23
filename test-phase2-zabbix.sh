@@ -187,8 +187,8 @@ else
     fail "Aggregated metric key" "Key present" "Key not found"
 fi
 
-# Check if per-subscription metric keys are defined
-if grep -q 'azure.storage.subscription\[' "$SCRIPT_PATH"; then
+# Check if per-subscription metric keys are defined (new format with metric name before subscription ID)
+if grep -q 'azure.storage.subscription\.' "$SCRIPT_PATH"; then
     pass "Per-subscription metric keys are used"
 else
     fail "Per-subscription metric keys" "Keys present" "Keys not found"

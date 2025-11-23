@@ -230,7 +230,7 @@ echo "$zabbix_host azure.storage.all.excluded_pending_review $timestamp $total_e
 #### Per-Subscription Metrics
 
 ```bash
-echo "$zabbix_host azure.storage.subscription[$sub_id].invalid_tags $timestamp $sub_invalid_tags"
+echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $timestamp $sub_invalid_tags"
 ```
 
 ---

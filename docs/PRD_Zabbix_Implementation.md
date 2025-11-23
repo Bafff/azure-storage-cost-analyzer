@@ -678,9 +678,9 @@ azure.storage.disk[{#DISK_NAME}].age_days
 azure.storage.disk[{#DISK_NAME}].state
 
 # Per-subscription metrics
-azure.storage.subscription[{#SUBSCRIPTION_ID}].total_waste
-azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count
-azure.storage.subscription[{#SUBSCRIPTION_ID}].snapshot_count
+azure.storage.subscription.total_waste[{#SUBSCRIPTION_ID}]
+azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]
+azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]
 
 # Per-resource-group metrics
 azure.storage.rg[{#RG_NAME}].disk_count
@@ -878,8 +878,8 @@ azure.storage.all.total_disks = 45
 azure.storage.all.total_snapshots = 250
 
 # Per-subscription metrics (via LLD)
-azure.storage.subscription[Production].waste_monthly = 38.63
-azure.storage.subscription[Dev/Test].waste_monthly = 146.87
+azure.storage.subscription.waste_monthly[Production] = 38.63
+azure.storage.subscription.waste_monthly[Dev/Test] = 146.87
 ```
 
 ---
@@ -919,9 +919,9 @@ create_zabbix_batch_file() {
     for sub_id in "${SUBSCRIPTIONS[@]}"; do
         local sub_metrics=$(get_subscription_metrics "$sub_id")
 
-        echo "$ZABBIX_HOST azure.storage.subscription[$sub_id].waste_monthly $timestamp $(jq -r '.waste' <<< $sub_metrics)" >> "$batch_file"
-        echo "$ZABBIX_HOST azure.storage.subscription[$sub_id].disk_count $timestamp $(jq -r '.disks' <<< $sub_metrics)" >> "$batch_file"
-        echo "$ZABBIX_HOST azure.storage.subscription[$sub_id].snapshot_count $timestamp $(jq -r '.snapshots' <<< $sub_metrics)" >> "$batch_file"
+        echo "$ZABBIX_HOST azure.storage.subscription.waste_monthly[$sub_id] $timestamp $(jq -r '.waste' <<< $sub_metrics)" >> "$batch_file"
+        echo "$ZABBIX_HOST azure.storage.subscription.disk_count[$sub_id] $timestamp $(jq -r '.disks' <<< $sub_metrics)" >> "$batch_file"
+        echo "$ZABBIX_HOST azure.storage.subscription.snapshot_count[$sub_id] $timestamp $(jq -r '.snapshots' <<< $sub_metrics)" >> "$batch_file"
     done
 
     # Aggregated metrics
@@ -1316,7 +1316,7 @@ Create Zabbix template: **Azure Storage Cost Monitoring**
   <item_prototypes>
     <item_prototype>
       <name>Azure [{#SUBSCRIPTION_NAME}]: Monthly Waste</name>
-      <key>azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly</key>
+      <key>azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]</key>
       <type>ZABBIX_TRAPPER</type>
       <value_type>FLOAT</value_type>
       <units>USD</units>
@@ -1326,7 +1326,7 @@ Create Zabbix template: **Azure Storage Cost Monitoring**
   <trigger_prototypes>
     <trigger_prototype>
       <name>Azure [{#SUBSCRIPTION_NAME}]: High waste detected</name>
-      <expression>{Azure Storage Monitor:azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly.last()} &gt; 100</expression>
+      <expression>{Azure Storage Monitor:azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}].last()} &gt; 100</expression>
       <priority>HIGH</priority>
     </trigger_prototype>
   </trigger_prototypes>

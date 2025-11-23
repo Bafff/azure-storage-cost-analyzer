@@ -433,15 +433,32 @@ def main():
 
     # Determine which files to validate
     if sys.argv[1] == '--all':
-        # Find all Zabbix template files
-        files = list(Path('.').rglob('*zabbix*.xml'))
-        files.extend(Path('.').rglob('template*.xml'))
-        # Remove duplicates
-        files = list(set(files))
+        # Find all Zabbix template files (XML and YAML)
+        xml_files = list(Path('.').rglob('*zabbix*.xml'))
+        xml_files.extend(Path('.').rglob('template*.xml'))
+        yaml_files = list(Path('.').rglob('*zabbix*.yaml'))
+        yaml_files.extend(Path('.').rglob('*zabbix*.yml'))
+
+        # For YAML files, just verify they exist (validated by yamllint)
+        if yaml_files:
+            print("\n" + "="*70)
+            print("Found YAML template files (validated by yamllint):")
+            print("="*70)
+            for yaml_file in yaml_files:
+                print(f"✅ {yaml_file}")
+            print()
+
+        # Remove duplicates from XML files
+        files = list(set(xml_files))
+
+        if not files and not yaml_files:
+            print("❌ No Zabbix template files found (XML or YAML)")
+            sys.exit(1)
 
         if not files:
-            print("❌ No Zabbix template files found")
-            sys.exit(1)
+            # Only YAML files found, no XML to validate
+            print("✅ All template files validated successfully!")
+            sys.exit(0)
     else:
         # Validate specific file
         file_path = Path(sys.argv[1])

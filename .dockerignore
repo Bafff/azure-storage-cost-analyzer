@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!ZABBIX_SETUP.md
+
+# Tests
+test-*.sh
+*.json
+*.txt
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Environment files
+.env
+.env.local
+config.conf
+
+# Azure work directory
+.azure-work/

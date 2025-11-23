@@ -218,7 +218,7 @@ else
     fail "Zabbix aggregated keys" "Keys present" "Keys not found"
 fi
 
-if grep -q 'azure.storage.subscription\[' "$SCRIPT_PATH"; then
+if grep -q 'azure.storage.subscription\.' "$SCRIPT_PATH"; then
     pass "Zabbix output includes per-subscription metric keys"
 else
     fail "Zabbix per-subscription keys" "Keys present" "Keys not found"
