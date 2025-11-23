@@ -11,22 +11,92 @@ Use this checklist to build or modify Zabbix 7.0 templates without getting block
 6) **Validate locally:** Run `python3 validate-zabbix-template.py <file>` (fast structural check) then import into a local Zabbix 7.0 UI if possible.  
 7) **Commit & push:** Keep template + doc in the same change; include rationale in commit message.
 
-## DOs
-- DO keep all UUIDs unique and v4 (32 hex chars for YAML, dashed v4 for XML).  
-- DO set trapper items when using `zabbix_sender`.  
-- DO keep macro names in uppercase with braces (`{$MACRO}`) and use LLD macros `{#LLD}` inside keys/expressions.  
-- DO keep `delay` numeric strings (`'0'`, `1h`, etc.) and history/trends with duration suffix.  
-- DO mirror per‑subscription keys in the sender script to the template keys exactly.  
-- DO include valuemaps when items expose coded numeric status.
-- DO add per‑LLD overrideable thresholds for triggers that can vary by entity using contextual macros, e.g. `{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}`.
+## Macro Usage Rules (CRITICAL)
 
-## DON’Ts
-- DON’T mix dashed and non‑dashed UUIDs in the same YAML template.  
-- DON’T use dots after parameter lists (e.g., `key[param].suffix` → invalid).  
-- DON’T leave item type as `ZABBIX_ACTIVE` when metrics are pushed; imports will pass but data won’t arrive.  
-- DON’T reuse UUIDs between items, prototypes, triggers, or valuemaps.  
-- DON’T omit template group; the UI import may fail or place the template oddly.  
-- DON’T rely only on `xmllint`; always run the custom validator or a test import.
+**Read first:** [Macros supported by location - Zabbix 7.0 Documentation](https://www.zabbix.com/documentation/7.0/en/manual/appendix/macros/supported_by_location)
+
+### Supported Macros by Location
+
+| Location | User Macros<br/>`{$MACRO}` | LLD Macros<br/>`{#MACRO}` | Built-in<br/>`{ITEM.LASTVALUE}` |
+|----------|:---:|:---:|:---:|
+| **Trigger names** | ❌ NO | ✅ YES | ✅ YES |
+| **Trigger descriptions** | ✅ YES | ✅ YES | ✅ YES |
+| **Item prototype names** | ❌ NO | ✅ YES | ❌ NO |
+| **Item descriptions** | ✅ YES | ✅ YES | ❌ NO |
+| **Trigger expressions** | ✅ YES | ✅ YES | N/A |
+
+### Key Macro Guidelines
+
+1. **ALWAYS use context with user macros in LLD triggers**
+   ```yaml
+   # ✅ CORRECT - Can be overridden per subscription
+   expression: last(...)>{$THRESHOLD:"{#SUBSCRIPTION_ID}"}
+
+   # ❌ WRONG - Cannot be overridden per discovered entity
+   expression: last(...)>{$THRESHOLD}
+   ```
+
+2. **User macros in trigger names will NOT resolve**
+   ```yaml
+   # ❌ WRONG - {$THRESHOLD} won't be replaced
+   name: 'Alert when value exceeds {$THRESHOLD}'
+
+   # ✅ CORRECT - Use in description instead
+   name: 'High value detected'
+   description: 'Value exceeds threshold {$THRESHOLD:"{#SUBSCRIPTION_ID}"}'
+   ```
+
+3. **LLD macros work in trigger names and item names**
+   ```yaml
+   # ✅ CORRECT
+   name: 'High waste in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
+   ```
+
+### Per-Entity Override Pattern (LLD + User Macros)
+
+For triggers that need per-entity thresholds:
+
+```yaml
+# 1. Define trigger with contextual user macro
+trigger_prototypes:
+  - expression: last(/Template/item[{#ENTITY_ID}])>{$THRESHOLD:"{#ENTITY_ID}"}
+    name: 'Alert for {#ENTITY_NAME}'
+    description: 'Value exceeds {$THRESHOLD:"{#ENTITY_ID}"}'
+
+# 2. Define default macro at template level
+macros:
+  - macro: '{$THRESHOLD}'
+    value: '100'
+    description: 'Default threshold (override per entity with {$THRESHOLD:"entity-id"})'
+```
+
+**Why context matters:**
+- `{$THRESHOLD:"{#SUBSCRIPTION_ID}"}` → Can set different values per subscription
+- Without context: All subscriptions share the same threshold value
+
+**Official Documentation:**
+- [User macros with context](https://www.zabbix.com/documentation/7.0/en/manual/config/macros/user_macros#user-macro-context)
+- [User macros supported locations](https://www.zabbix.com/documentation/7.0/en/manual/appendix/macros/supported_by_location_user)
+
+## DOs
+- DO keep all UUIDs unique and v4 (32 hex chars for YAML, dashed v4 for XML).
+- DO set trapper items when using `zabbix_sender`.
+- DO keep macro names in uppercase with braces (`{$MACRO}`) and use LLD macros `{#LLD}` inside keys/expressions.
+- DO keep `delay` numeric strings (`'0'`, `1h`, etc.) and history/trends with duration suffix.
+- DO mirror per‑subscription keys in the sender script to the template keys exactly.
+- DO include valuemaps when items expose coded numeric status.
+- **DO ALWAYS add context to user macros in LLD triggers** for per-entity overrides: `{$MACRO:"{#LLD_MACRO}"}`.
+- DO verify macro usage against [supported locations table](https://www.zabbix.com/documentation/7.0/en/manual/appendix/macros/supported_by_location).
+
+## DON'Ts
+- DON'T mix dashed and non‑dashed UUIDs in the same YAML template.
+- DON'T use dots after parameter lists (e.g., `key[param].suffix` → invalid).
+- DON'T leave item type as `ZABBIX_ACTIVE` when metrics are pushed; imports will pass but data won't arrive.
+- DON'T reuse UUIDs between items, prototypes, triggers, or valuemaps.
+- DON'T omit template group; the UI import may fail or place the template oddly.
+- DON'T rely only on `xmllint`; always run the custom validator or a test import.
+- **DON'T use user macros in trigger names** (they won't resolve; use description instead).
+- **DON'T use user macros without context in LLD triggers** (prevents per-entity overrides).
 
 ## Example key patterns (LLD safe)
 - `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]`
