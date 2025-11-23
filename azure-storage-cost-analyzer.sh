@@ -1581,10 +1581,13 @@ collect_subscription_metrics() {
     local disk_invalid_tags=0
     local disk_excluded_pending=0
 
-    # Apply tag filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
     local unattached_disks_json
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
-    if [[ -n "$tag_name" && -n "$unattached_disks_raw" ]]; then
+    local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+
+    # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
+    if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
         filtered_result=$(filter_resources_by_tags \
             "$unattached_disks_raw" \
@@ -1592,7 +1595,7 @@ collect_subscription_metrics() {
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
             "false" \
-            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
@@ -1600,7 +1603,7 @@ collect_subscription_metrics() {
         disk_invalid_tags=$(echo "$filtered_result" | jq -r '.stats.invalid_tags' 2>/dev/null || echo "0")
         disk_excluded_pending=$(echo "$filtered_result" | jq -r '.stats.excluded_pending' 2>/dev/null || echo "0")
     else
-        # No tag filtering
+        # No tag filtering or RG exclusion
         unattached_disks_json="$unattached_disks_raw"
         if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
             disk_count=$(echo "$unattached_disks_json" | jq '. | length' 2>/dev/null || echo "0")
@@ -1660,9 +1663,10 @@ collect_subscription_metrics() {
     local snapshot_invalid_tags=0
     local snapshot_excluded_pending=0
 
-    # Apply tag filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
     local snapshots_json
-    if [[ -n "$tag_name" && -n "$snapshots_raw" ]]; then
+    # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
+    if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$snapshots_raw" ]]; then
         local filtered_result
         filtered_result=$(filter_resources_by_tags \
             "$snapshots_raw" \
@@ -1670,7 +1674,7 @@ collect_subscription_metrics() {
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
             "false" \
-            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
@@ -1678,7 +1682,7 @@ collect_subscription_metrics() {
         snapshot_invalid_tags=$(echo "$filtered_result" | jq -r '.stats.invalid_tags' 2>/dev/null || echo "0")
         snapshot_excluded_pending=$(echo "$filtered_result" | jq -r '.stats.excluded_pending' 2>/dev/null || echo "0")
     else
-        # No tag filtering
+        # No tag filtering or RG exclusion
         snapshots_json="$snapshots_raw"
         if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
             snapshot_count=$(echo "$snapshots_json" | jq '. | length' 2>/dev/null || echo "0")
@@ -2891,11 +2895,13 @@ analyze_unattached_disks_only() {
     local unattached_disks_raw
     unattached_disks_raw=$(list_unattached_disks "$subscription_id" "$resource_group" "$include_attached")
 
-    # Apply tag filtering if enabled
+    # Apply tag filtering and/or RG exclusion filtering if enabled
     local unattached_disks_json
     local tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
-    if [[ -n "$tag_name" && -n "$unattached_disks_raw" ]]; then
+    local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
+    if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
         filtered_result=$(filter_resources_by_tags \
             "$unattached_disks_raw" \
@@ -2903,7 +2909,7 @@ analyze_unattached_disks_only() {
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
             "$show_tagged_only" \
-            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
@@ -3195,11 +3201,13 @@ generate_unused_resources_report() {
     local unattached_disks_raw
     unattached_disks_raw=$(list_unattached_disks "$subscription_id" "$resource_group" "$include_attached")
 
-    # Apply tag filtering if enabled
+    # Apply tag filtering and/or RG exclusion filtering if enabled
     local unattached_disks_json
     local disk_tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
-    if [[ -n "$tag_name" && -n "$unattached_disks_raw" ]]; then
+    local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
+    if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
         filtered_result=$(filter_resources_by_tags \
             "$unattached_disks_raw" \
@@ -3207,7 +3215,7 @@ generate_unused_resources_report() {
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
             "$show_tagged_only" \
-            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
@@ -3425,10 +3433,11 @@ generate_unused_resources_report() {
     local snapshots_raw
     snapshots_raw=$(get_all_snapshots_with_details "$subscription_id" "$resource_group")
 
-    # Apply tag filtering if enabled
+    # Apply tag filtering and/or RG exclusion filtering if enabled
     local snapshots_json
     local snapshot_tag_filter_stats=""
-    if [[ -n "$tag_name" && -n "$snapshots_raw" ]]; then
+    # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
+    if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$snapshots_raw" ]]; then
         local filtered_result
         filtered_result=$(filter_resources_by_tags \
             "$snapshots_raw" \
@@ -3436,7 +3445,7 @@ generate_unused_resources_report() {
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
             "$skip_tagged" \
             "$show_tagged_only" \
-            "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+            "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
