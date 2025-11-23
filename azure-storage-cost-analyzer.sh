@@ -4266,6 +4266,15 @@ main() {
         done
     fi
 
+    # Validate RG age threshold is numeric (if set via config)
+    if [[ -n "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-}" ]]; then
+        if [[ ! "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS}" =~ ^[0-9]+$ ]]; then
+            echo "Error: exclude_rg_age_threshold_days in config must be a positive integer"
+            echo "Found: '${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS}'"
+            exit $EXIT_CONFIG_ERROR
+        fi
+    fi
+
     if [[ -z "$start_date" && -z "$end_date" && -n "$CONFIG_DATE_RANGE_DAYS" ]]; then
         if [[ "$CONFIG_DATE_RANGE_DAYS" =~ ^[0-9]+$ ]]; then
             if calculate_date_range "days" "$CONFIG_DATE_RANGE_DAYS"; then
