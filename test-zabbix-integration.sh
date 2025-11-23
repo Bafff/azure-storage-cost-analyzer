@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=all
 
 # Integration Test for Zabbix 7.0.1 with Azure Storage Cost Monitor Template
 # This script:
