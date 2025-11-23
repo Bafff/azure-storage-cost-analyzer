@@ -2,58 +2,22 @@
 
 This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test the Azure Storage Cost Monitor template integration.
 
-## Template Versions
+## Template
 
-The repository includes three template formats:
+The repository includes a single Zabbix template in YAML format:
 
-1. **zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format (recommended) ⭐
-   - **Modern, clean YAML format**
-   - Includes all items, discovery rules, and triggers
-   - Smaller file size (13K vs 24K XML)
-   - Better readability and maintainability
-   - UUID format: **With dashes** (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-   - Compatible with both Web UI and API import
-   - **Used by default in automated tests**
+**zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
+- Modern, clean YAML format
+- Includes all items, discovery rules, and triggers
+- Compact and maintainable (13K)
+- UUID format: With dashes (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+- Compatible with both Web UI and API import
+- Used by default in automated tests
 
-2. **zabbix-template-azure-storage-monitor-7.0.xml** - XML format (Web UI)
-   - Full production template in XML format
-   - Includes all items, discovery rules, and triggers
-   - UUID format: With dashes (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-   - Best for Web UI import
-   - Contains triggers inside items (Zabbix 7.0 structure)
-
-3. **zabbix-template-azure-storage-monitor-7.0-test.xml** - Simplified XML (deprecated)
-   - Legacy simplified test template
-   - UUID format: Without dashes (32 chars)
-   - Use YAML version instead for new deployments
-
-**Format Comparison:**
-
-| Format | Size | API Import | Web UI Import | Readability | Recommended |
-|--------|------|------------|---------------|-------------|-------------|
-| YAML   | 13K  | ✅ Yes     | ✅ Yes        | ⭐⭐⭐       | ✅ **Yes**  |
-| XML    | 24K  | ⚠️ Complex | ✅ Yes        | ⭐⭐         | For Web UI only |
-| Test XML | 8K | ✅ Yes     | ✅ Yes        | ⭐           | ❌ Deprecated |
-
-**Important UUID Notes:**
-- **YAML format**: UUIDs **with dashes** (UUID v4 format - Web UI compatible)
-- **XML format (full)**: UUIDs with dashes (best for Web UI)
-- **XML format (test)**: UUIDs without dashes (API compatible)
-
-**Note:** Zabbix Web UI requires UUID v4 format (with dashes). API import is more flexible and accepts both formats.
-
-**Usage Examples:**
+**Usage:**
 ```bash
-# Use YAML template (recommended, default)
+# Run integration test with YAML template (default)
 ./test-zabbix-integration.sh
-
-# Use full XML template
-ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0.xml \
-  ./test-zabbix-integration.sh
-
-# Use legacy test XML
-ZABBIX_TEMPLATE_FILE=./zabbix-template-azure-storage-monitor-7.0-test.xml \
-  ./test-zabbix-integration.sh
 ```
 
 ## Prerequisites
@@ -157,7 +121,7 @@ docker compose -f docker-compose.zabbix.yml ps
 
 1. Navigate to **Data collection** → **Templates**
 2. Click **Import** button (top right)
-3. Choose file: `zabbix-template-azure-storage-monitor-7.0.xml`
+3. Choose file: `zabbix-template-azure-storage-monitor-7.0.yaml`
 4. Configure import rules:
    - ✓ Create new templates
    - ✓ Update existing templates
@@ -311,7 +275,7 @@ docker compose -f docker-compose.zabbix.yml down -v
 ## Configuration Files
 
 - `docker-compose.zabbix.yml` - Docker Compose configuration for Zabbix 7.0.1
-- `zabbix-template-azure-storage-monitor-7.0.xml` - Zabbix template
+- `zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
 - `test-zabbix-integration.sh` - Automated integration test script
 
 ## Default Credentials

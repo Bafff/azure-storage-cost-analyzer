@@ -1816,11 +1816,11 @@ EOF
                     local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0')
                     local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0')
 
-                    echo "$zabbix_host azure.storage.subscription[$sub_id].waste_monthly $timestamp $sub_waste"
-                    echo "$zabbix_host azure.storage.subscription[$sub_id].disk_count $timestamp $sub_disks"
-                    echo "$zabbix_host azure.storage.subscription[$sub_id].snapshot_count $timestamp $sub_snapshots"
-                    echo "$zabbix_host azure.storage.subscription[$sub_id].invalid_tags $timestamp $sub_invalid_tags"
-                    echo "$zabbix_host azure.storage.subscription[$sub_id].excluded_pending_review $timestamp $sub_excluded_pending"
+                    echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste"
+                    echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks"
+                    echo "$zabbix_host azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots"
+                    echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $timestamp $sub_invalid_tags"
+                    echo "$zabbix_host azure.storage.subscription.excluded_pending_review[$sub_id] $timestamp $sub_excluded_pending"
                 fi
             done
             ;;
@@ -1962,9 +1962,9 @@ create_zabbix_batch_file() {
                 local sub_disks=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.unattached_disks_count")
                 local sub_snapshots=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.snapshots_count")
 
-                echo "$hostname azure.storage.subscription[$sub_id].waste_monthly $timestamp $sub_waste" >> "$batch_file"
-                echo "$hostname azure.storage.subscription[$sub_id].disk_count $timestamp $sub_disks" >> "$batch_file"
-                echo "$hostname azure.storage.subscription[$sub_id].snapshot_count $timestamp $sub_snapshots" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots" >> "$batch_file"
             fi
         done
     fi

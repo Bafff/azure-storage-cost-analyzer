@@ -19,7 +19,7 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 | Zabbix sender integration | ✅ Fully implemented | Script (line 1390-1504) |
 | JSON output format | ✅ Fully implemented | Script (line 1248-1294) |
 | Zabbix output format | ✅ Fully implemented | Script (line 1297-1326) |
-| Zabbix 7.0.5 template | ✅ Created | `zabbix-template-azure-storage-monitor-7.0.xml` |
+| Zabbix 7.0.5 template | ✅ Created | `zabbix-template-azure-storage-monitor-7.0.yaml` |
 | Azure DevOps pipeline | ✅ Created | `azure-pipelines-storage-monitor.yml` |
 | Documentation | ✅ Complete | `ZABBIX-INTEGRATION-GUIDE.md` |
 
@@ -32,7 +32,7 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 1. Log in to Zabbix frontend (7.0.5)
 2. Go to **Configuration → Templates**
 3. Click **Import**
-4. Upload: `zabbix-template-azure-storage-monitor-7.0.xml`
+4. Upload: `zabbix-template-azure-storage-monitor-7.0.yaml`
 5. Create host `azure-storage-monitor`:
    - Template: "Azure Storage Cost Monitor"
    - Interface: Trapper (port 10051)
@@ -167,7 +167,7 @@ Script → zabbix_sender → Zabbix Trapper (10051) → Template → Triggers
 | `azure.storage.all.total_disks` | Int | 12 |
 | `azure.storage.all.total_snapshots` | Int | 89 |
 | `azure.storage.script.last_run_timestamp` | Unixtime | 1732114800 |
-| `azure.storage.subscription[sub-id].waste_monthly` | Float | 45.60 |
+| `azure.storage.subscription.waste_monthly[sub-id]` | Float | 45.60 |
 
 **Format (Zabbix sender):**
 ```
@@ -250,7 +250,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Zabbix Template Details
 
-**File:** `zabbix-template-azure-storage-monitor-7.0.xml`
+**File:** `zabbix-template-azure-storage-monitor-7.0.yaml`
 
 ### Items (Aggregated)
 
@@ -270,9 +270,9 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 - Creates per-subscription items automatically
 
 **Item Prototypes:**
-- `azure.storage.subscription[{#SUBSCRIPTION_ID}].waste_monthly`
-- `azure.storage.subscription[{#SUBSCRIPTION_ID}].disk_count`
-- `azure.storage.subscription[{#SUBSCRIPTION_ID}].snapshot_count`
+- `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]`
+- `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]`
+- `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]`
 
 ### Triggers
 

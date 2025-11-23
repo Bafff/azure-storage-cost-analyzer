@@ -109,13 +109,13 @@ Comprehensive Zabbix-specific template validation using the standalone validator
 
 ```bash
 # Validate a specific template
-python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.xml
+python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
 
 # Validate all templates in current directory
 python3 validate-zabbix-template.py --all
 
 # The script is executable, so you can also run:
-./validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.xml
+./validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
 ```
 
 **The validator (`validate-zabbix-template.py`) is a comprehensive standalone script that checks:**

@@ -78,7 +78,7 @@ check_prerequisites() {
         missing_tools+=("docker")
     fi
 
-    if ! command -v docker compose &> /dev/null; then
+    if ! docker compose version &> /dev/null; then
         missing_tools+=("docker-compose")
     fi
 
