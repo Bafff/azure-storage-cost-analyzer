@@ -1076,8 +1076,8 @@ filter_resources_by_tags() {
     local exclude_rgs="${6:-}"
     local age_threshold_days="${7:-30}"
 
-    # If tag filtering is disabled, return all resources
-    if [[ -z "$tag_name" ]]; then
+    # If both tag filtering AND RG exclusion are disabled, return all resources unchanged
+    if [[ -z "$tag_name" && -z "$exclude_rgs" ]]; then
         local total_count=$(echo "$resources_json" | jq 'length' 2>/dev/null || echo "0")
         echo "$resources_json" | jq --argjson total "$total_count" '{
             resources: .,
@@ -1086,25 +1086,34 @@ filter_resources_by_tags() {
                 included: $total,
                 excluded_pending: 0,
                 excluded_expired: 0,
-                invalid_tags: 0
+                invalid_tags: 0,
+                excluded_rg: 0
             }
         }' 2>/dev/null
         return 0
     fi
 
-    # Process each resource and annotate with tag status
+    # Process each resource and annotate with tag status (if tag filtering is enabled)
     local annotated_json
-    annotated_json=$(echo "$resources_json" | jq --arg tagname "$tag_name" --arg tagfmt "$tag_format" '
-        map(
-            . + {
-                "TagStatus": (
-                    if .Tags then
-                        if .Tags[$tagname] then
-                            {
-                                "has_tag": true,
-                                "tag_value": .Tags[$tagname],
-                                "tag_name": $tagname
-                            }
+    if [[ -n "$tag_name" ]]; then
+        annotated_json=$(echo "$resources_json" | jq --arg tagname "$tag_name" --arg tagfmt "$tag_format" '
+            map(
+                . + {
+                    "TagStatus": (
+                        if .Tags then
+                            if .Tags[$tagname] then
+                                {
+                                    "has_tag": true,
+                                    "tag_value": .Tags[$tagname],
+                                    "tag_name": $tagname
+                                }
+                            else
+                                {
+                                    "has_tag": false,
+                                    "tag_value": null,
+                                    "tag_name": $tagname
+                                }
+                            end
                         else
                             {
                                 "has_tag": false,
@@ -1112,17 +1121,14 @@ filter_resources_by_tags() {
                                 "tag_name": $tagname
                             }
                         end
-                    else
-                        {
-                            "has_tag": false,
-                            "tag_value": null,
-                            "tag_name": $tagname
-                        }
-                    end
-                )
-            }
-        )
-    ' 2>/dev/null)
+                    )
+                }
+            )
+        ' 2>/dev/null)
+    else
+        # No tag filtering - pass resources through for RG exclusion only
+        annotated_json="$resources_json"
+    fi
 
     # Now evaluate each resource's tag status using bash function
     local -a filtered_resources=()
@@ -1161,29 +1167,36 @@ filter_resources_by_tags() {
             fi
         fi
 
-        local tags_json=$(echo "$resource" | jq -c '.Tags // {}' 2>/dev/null)
-        local tag_status_result
-        tag_status_result=$(check_resource_tag_status "$tags_json" "$tag_name" "$tag_format" 2>/dev/null)
+        # Check tag status only if tag filtering is enabled
+        local should_exclude="false"
+        local tag_status_type="none"
+        local review_date=""
 
-        local should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude' 2>/dev/null)
-        local tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status' 2>/dev/null)
-        local review_date=$(echo "$tag_status_result" | jq -r '.review_date' 2>/dev/null)
+        if [[ -n "$tag_name" ]]; then
+            local tags_json=$(echo "$resource" | jq -c '.Tags // {}' 2>/dev/null)
+            local tag_status_result
+            tag_status_result=$(check_resource_tag_status "$tags_json" "$tag_name" "$tag_format" 2>/dev/null)
 
-        # Annotate resource with detailed tag status
-        resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+            should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude' 2>/dev/null)
+            tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status' 2>/dev/null)
+            review_date=$(echo "$tag_status_result" | jq -r '.review_date' 2>/dev/null)
 
-        # Track statistics
-        case "$tag_status_type" in
-            "invalid")
-                ((invalid_tags++))
-                ;;
-            "pending")
-                ((excluded_pending++))
-                ;;
-            "expired")
-                ((excluded_expired++))
-                ;;
-        esac
+            # Annotate resource with detailed tag status
+            resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+
+            # Track statistics
+            case "$tag_status_type" in
+                "invalid")
+                    ((invalid_tags++))
+                    ;;
+                "pending")
+                    ((excluded_pending++))
+                    ;;
+                "expired")
+                    ((excluded_expired++))
+                    ;;
+            esac
+        fi
 
         # Apply filtering logic
         local include_resource=true
