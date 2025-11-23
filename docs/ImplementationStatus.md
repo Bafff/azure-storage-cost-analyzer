@@ -19,9 +19,9 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 | Zabbix sender integration | ✅ Fully implemented | Script (line 1390-1504) |
 | JSON output format | ✅ Fully implemented | Script (line 1248-1294) |
 | Zabbix output format | ✅ Fully implemented | Script (line 1297-1326) |
-| Zabbix 7.0.5 template | ✅ Created | `zabbix-template-azure-storage-monitor-7.0.yaml` |
-| Azure DevOps pipeline | ✅ Created | `azure-pipelines-storage-monitor.yml` |
-| Documentation | ✅ Complete | `ZABBIX-INTEGRATION-GUIDE.md` |
+| Zabbix 7.0.5 template | ✅ Created | `templates/zabbix-template-azure-storage-monitor-7.0.yaml` |
+| Azure DevOps pipeline | ✅ Created | `.pipelines/azure-pipelines-storage-monitor.yml` |
+| Documentation | ✅ Complete | `ZabbixIntegrationGuide.md` |
 
 ---
 
@@ -32,7 +32,7 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 1. Log in to Zabbix frontend (7.0.5)
 2. Go to **Configuration → Templates**
 3. Click **Import**
-4. Upload: `zabbix-template-azure-storage-monitor-7.0.yaml`
+4. Upload: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 5. Create host `azure-storage-monitor`:
    - Template: "Azure Storage Cost Monitor"
    - Interface: Trapper (port 10051)
@@ -65,7 +65,7 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    ```
 
 3. **Import Pipeline**:
-   - Copy `azure-pipelines-storage-monitor.yml` to your repo
+   - Copy `.pipelines/azure-pipelines-storage-monitor.yml` to your repo
    - Update line 31: `azureSubscription: 'YOUR-SERVICE-CONNECTION-NAME'`
    - Commit and push
 
@@ -73,7 +73,7 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    - Pipelines → New Pipeline
    - Select your repo
    - Choose "Existing Azure Pipelines YAML file"
-   - Select `azure-pipelines-storage-monitor.yml`
+   - Select `.pipelines/azure-pipelines-storage-monitor.yml`
 
 ### Step 3: Test Run (2 minutes)
 
@@ -250,7 +250,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Zabbix Template Details
 
-**File:** `zabbix-template-azure-storage-monitor-7.0.yaml`
+**File:** `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 
 ### Items (Aggregated)
 
@@ -289,7 +289,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Azure DevOps Pipeline Details
 
-**File:** `azure-pipelines-storage-monitor.yml`
+**File:** `.pipelines/azure-pipelines-storage-monitor.yml`
 
 ### Schedule
 - **Daily:** 2 AM UTC (`cron: "0 2 * * *"`)
@@ -458,10 +458,10 @@ arguments: |
 | Resource | Location |
 |----------|----------|
 | Main README | `README.md` |
-| Zabbix integration guide | `ZABBIX-INTEGRATION-GUIDE.md` |
-| Quick start guide | `QUICK-START-GUIDE.md` |
-| Implementation PRD | `PRD_Zabbix_Implementation.md` |
-| Test results | `TEST_RESULTS.md` |
+| Zabbix integration guide | `ZabbixIntegrationGuide.md` |
+| Quick start guide | `QuickStartGuide.md` |
+| Implementation PRD | `PrdZabbixImplementation.md` |
+| Test results | `TestResults.md` |
 | TODO/changelog | `TODO.md` |
 
 ---

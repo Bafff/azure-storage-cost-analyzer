@@ -43,12 +43,12 @@ chmod +x azure-storage-cost-analyzer.sh
 Copy `azure-storage-monitor.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
 
 ## Tests
-Static sanity tests live in:
-- `test-phase1-features.sh`
-- `test-phase2-zabbix.sh`
-- `test-phase3-multi-subscription.sh`
+Static sanity tests live in the `tests/` directory:
+- `tests/test-phase1-features.sh`
+- `tests/test-phase2-zabbix.sh`
+- `tests/test-phase3-multi-subscription.sh`
 
 They run in CI via `.github/workflows/lint.yml`. Add cloud-backed tests separately when credentials are available.
 
 ## Pipeline
-`azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.
+`.pipelines/azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.

@@ -8,7 +8,7 @@ Use this checklist to build or modify Zabbix 7.0 templates without getting block
 3) **Choose item type:** For push data via `zabbix_sender`, set `type: TRAP` (ZABBIX_TRAPPER). Do not leave as active/passive agent unless the agent will collect it.  
 4) **Name keys correctly:** Pattern `namespace.metric[param]` – parameters always inside `[]`, no dots after the closing bracket. Example: `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]`.  
 5) **Discovery first:** Define discovery rule, then item_prototypes/trigger_prototypes referencing its LLD macros.  
-6) **Validate locally:** Run `python3 validate-zabbix-template.py <file>` (fast structural check) then import into a local Zabbix 7.0 UI if possible.  
+6) **Validate locally:** Run `python3 templates/validate-zabbix-template.py <file>` (fast structural check) then import into a local Zabbix 7.0 UI if possible.  
 7) **Commit & push:** Keep template + doc in the same change; include rationale in commit message.
 
 ## Macro Usage Rules (CRITICAL)
@@ -113,7 +113,7 @@ macros:
 ```bash
 python - <<'PY'
 import uuid, yaml, pathlib
-p = pathlib.Path("zabbix-template-azure-storage-monitor-7.0.yaml")
+p = pathlib.Path("templates/zabbix-template-azure-storage-monitor-7.0.yaml")
 d = yaml.safe_load(p.read_text())
 def walk(o):
     if isinstance(o, dict):

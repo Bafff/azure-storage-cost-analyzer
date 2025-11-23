@@ -359,8 +359,8 @@ exclude_pending_review = true
 
 ### Step 4: Update Documentation
 
-1. Update ZABBIX-INTEGRATION-GUIDE.md with new metrics
-2. Update IMPLEMENTATION-STATUS.md with tag feature
+1. Update ZabbixIntegrationGuide.md with new metrics
+2. Update ImplementationStatus.md with tag feature
 3. Add examples to README.md
 
 ### Step 5: Testing

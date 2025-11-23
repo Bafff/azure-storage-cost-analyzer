@@ -6,7 +6,7 @@ This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test th
 
 The repository includes a single Zabbix template in YAML format:
 
-**zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
+**templates/zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
 - Modern, clean YAML format
 - Includes all items, discovery rules, and triggers
 - Compact and maintainable (13K)
@@ -17,7 +17,7 @@ The repository includes a single Zabbix template in YAML format:
 **Usage:**
 ```bash
 # Run integration test with YAML template (default)
-./test-zabbix-integration.sh
+./tests/test-zabbix-integration.sh
 ```
 
 ## Prerequisites
@@ -60,13 +60,13 @@ brew install zabbix
 
 ```bash
 # Start all Zabbix services
-docker compose -f docker-compose.zabbix.yml up -d
+docker compose up -d
 
 # Check status
-docker compose -f docker-compose.zabbix.yml ps
+docker compose ps
 
 # View logs
-docker compose -f docker-compose.zabbix.yml logs -f
+docker compose logs -f
 ```
 
 ### 2. Access Zabbix Web Interface
@@ -89,10 +89,10 @@ The integration test will automatically:
 
 ```bash
 # Run the test (will clean up automatically)
-./test-zabbix-integration.sh
+./tests/test-zabbix-integration.sh
 
 # Keep Zabbix running after test
-SKIP_CLEANUP=true ./test-zabbix-integration.sh
+SKIP_CLEANUP=true ./tests/test-zabbix-integration.sh
 ```
 
 ## Manual Setup (Alternative)
@@ -102,12 +102,12 @@ If you prefer to set up manually instead of using the automated test:
 ### 1. Start Zabbix
 
 ```bash
-docker compose -f docker-compose.zabbix.yml up -d
+docker compose up -d
 ```
 
 Wait for all services to become healthy:
 ```bash
-docker compose -f docker-compose.zabbix.yml ps
+docker compose ps
 ```
 
 ### 2. Login to Zabbix Web Interface
@@ -121,7 +121,7 @@ docker compose -f docker-compose.zabbix.yml ps
 
 1. Navigate to **Data collection** → **Templates**
 2. Click **Import** button (top right)
-3. Choose file: `zabbix-template-azure-storage-monitor-7.0.yaml`
+3. Choose file: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 4. Configure import rules:
    - ✓ Create new templates
    - ✓ Update existing templates
@@ -221,14 +221,14 @@ The Azure Storage Cost Monitor template includes:
 
 Check Docker logs:
 ```bash
-docker compose -f docker-compose.zabbix.yml logs
+docker compose logs
 ```
 
 ### Can't access web interface
 
 1. Check if containers are running:
    ```bash
-   docker compose -f docker-compose.zabbix.yml ps
+   docker compose ps
    ```
 
 2. Check if port 8080 is available:
@@ -250,7 +250,7 @@ docker compose -f docker-compose.zabbix.yml logs
 3. Check that template is properly linked to host
 4. Review Zabbix server logs:
    ```bash
-   docker compose -f docker-compose.zabbix.yml logs zabbix-server | grep -i error
+   docker compose logs zabbix-server | grep -i error
    ```
 
 ### Template import fails
@@ -263,19 +263,19 @@ docker compose -f docker-compose.zabbix.yml logs
 
 ```bash
 # Stop containers (preserves data)
-docker compose -f docker-compose.zabbix.yml stop
+docker compose stop
 
 # Stop and remove containers (preserves data in volumes)
-docker compose -f docker-compose.zabbix.yml down
+docker compose down
 
 # Stop and remove everything including data
-docker compose -f docker-compose.zabbix.yml down -v
+docker compose down -v
 ```
 
 ## Configuration Files
 
-- `docker-compose.zabbix.yml` - Docker Compose configuration for Zabbix 7.0.1
-- `zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
+- `docker-compose.yml` - Docker Compose configuration for Zabbix 7.0.1
+- `templates/zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
 - `test-zabbix-integration.sh` - Automated integration test script
 
 ## Default Credentials
@@ -344,7 +344,7 @@ config_file = /etc/zabbix/zabbix_agentd.conf
 
 For production use:
 
-1. **Change default passwords** in `docker-compose.zabbix.yml`
+1. **Change default passwords** in `docker-compose.yml`
 2. **Use HTTPS** - add nginx reverse proxy with SSL
 3. **Configure backups** for PostgreSQL data
 4. **Set up monitoring** for Zabbix containers themselves

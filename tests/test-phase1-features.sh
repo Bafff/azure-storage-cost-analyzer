@@ -1,7 +1,7 @@
 #!/bin/bash
 # Phase 1 Feature Tests - Simple and Fast
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 SCRIPT=./azure-storage-cost-analyzer.sh
 EXAMPLE_CONFIG=./azure-storage-monitor.conf.example
 PASSED=0

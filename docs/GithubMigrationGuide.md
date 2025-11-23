@@ -91,7 +91,7 @@ Features:
 - Azure DevOps pipeline integration
 - JSON/Text/Zabbix output formats
 
-See IMPLEMENTATION-STATUS.md for complete feature list.
+See ImplementationStatus.md for complete feature list.
 See TODO.md for remaining work on tag exclusion feature."
 
 # Create GitHub repo (choose public or private)
@@ -355,21 +355,31 @@ git push ado ado-sync:refs/heads/feature/azure-storage-cost-analyzer-migration
 azure-storage-cost-analyzer/
 ├── .github/
 │   └── workflows/
-│       └── test.yml                    # CI/CD testing
+│       └── lint.yml                    # CI/CD linting
 ├── .gitignore
 ├── README.md                           # Main documentation
-├── IMPLEMENTATION-STATUS.md            # Current features status
-├── TODO.md                             # Remaining work
-├── TAG-EXCLUSION-IMPLEMENTATION.md     # Tag feature guide
-├── ZABBIX-INTEGRATION-GUIDE.md         # Zabbix setup guide
-├── QUICK-START-GUIDE.md               # Quick start
-├── PRD_Zabbix_Implementation.md       # Original requirements
-├── azure-storage-cost-analyzer.sh  # Main script
+├── azure-storage-cost-analyzer.sh      # Main script
 ├── azure-storage-monitor.conf.example  # Config template
-├── azure-pipelines-storage-monitor.yml # ADO pipeline
-├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
-├── test-*.sh                          # Test scripts
-└── LICENSE                            # MIT or Apache 2.0
+├── docker-compose.yml                  # Zabbix test environment
+├── claude.md / AGENTS.md               # AI agent guides
+├── .pipelines/
+│   └── azure-pipelines-storage-monitor.yml # ADO pipeline
+├── templates/
+│   ├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
+│   └── validate-zabbix-template.py     # Template validator
+├── tests/                              # Test scripts
+│   ├── test-phase1-features.sh
+│   ├── test-phase2-zabbix.sh
+│   ├── test-phase3-multi-subscription.sh
+│   └── ...
+├── docs/                               # Documentation
+│   ├── QuickStartGuide.md              # Quick start
+│   ├── ZabbixIntegrationGuide.md       # Zabbix setup guide
+│   ├── ImplementationStatus.md         # Current features status
+│   ├── TagExclusionImplementation.md   # Tag feature guide
+│   ├── PrdZabbixImplementation.md      # Original requirements
+│   └── ...
+└── LICENSE                             # MIT or Apache 2.0
 ```
 
 ---

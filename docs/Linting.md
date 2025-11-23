@@ -42,7 +42,7 @@ Lint all bash scripts:
 
 ```bash
 # Lint a specific file
-shellcheck azure-storage-cost-analysis-enhanced.sh
+shellcheck azure-storage-cost-analyzer.sh
 
 # Lint all .sh files
 find . -name "*.sh" -type f -exec shellcheck {} \;
@@ -80,7 +80,7 @@ Lint YAML files:
 
 ```bash
 # Lint specific file
-yamllint azure-pipelines-storage-monitor.yml
+yamllint .pipelines/azure-pipelines-storage-monitor.yml
 
 # Lint all YAML files
 find . -name "*.yml" -o -name "*.yaml" -type f -exec yamllint {} \;
@@ -97,7 +97,7 @@ Quick syntax validation:
 
 ```bash
 # Check syntax without executing
-bash -n azure-storage-cost-analysis-enhanced.sh
+bash -n azure-storage-cost-analyzer.sh
 
 # Check all scripts
 find . -name "*.sh" -type f -exec bash -n {} \; && echo "All scripts have valid syntax"
@@ -109,13 +109,13 @@ Comprehensive Zabbix-specific template validation using the standalone validator
 
 ```bash
 # Validate a specific template
-python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
+python3 templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
 
 # Validate all templates in current directory
-python3 validate-zabbix-template.py --all
+python3 templates/validate-zabbix-template.py --all
 
 # The script is executable, so you can also run:
-./validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
+./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
 ```
 
 **The validator (`validate-zabbix-template.py`) is a comprehensive standalone script that checks:**
