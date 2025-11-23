@@ -355,25 +355,31 @@ git push ado ado-sync:refs/heads/feature/azure-storage-cost-analyzer-migration
 azure-storage-cost-analyzer/
 ├── .github/
 │   └── workflows/
-│       └── test.yml                    # CI/CD testing
+│       └── lint.yml                    # CI/CD linting
 ├── .gitignore
 ├── README.md                           # Main documentation
-├── ImplementationStatus.md             # Current features status
-├── TODO.md                             # Remaining work
-├── TagExclusionImplementation.md       # Tag feature guide
-├── ZabbixIntegrationGuide.md           # Zabbix setup guide
-├── QuickStartGuide.md                  # Quick start
-├── PrdZabbixImplementation.md          # Original requirements
-├── azure-storage-cost-analyzer.sh  # Main script
+├── azure-storage-cost-analyzer.sh      # Main script
 ├── azure-storage-monitor.conf.example  # Config template
+├── docker-compose.yml                  # Zabbix test environment
+├── claude.md / AGENTS.md               # AI agent guides
 ├── .pipelines/
 │   └── azure-pipelines-storage-monitor.yml # ADO pipeline
 ├── templates/
 │   ├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
 │   └── validate-zabbix-template.py     # Template validator
-├── tests/                             # Test scripts
-│   └── test-*.sh
-└── LICENSE                            # MIT or Apache 2.0
+├── tests/                              # Test scripts
+│   ├── test-phase1-features.sh
+│   ├── test-phase2-zabbix.sh
+│   ├── test-phase3-multi-subscription.sh
+│   └── ...
+├── docs/                               # Documentation
+│   ├── QuickStartGuide.md              # Quick start
+│   ├── ZabbixIntegrationGuide.md       # Zabbix setup guide
+│   ├── ImplementationStatus.md         # Current features status
+│   ├── TagExclusionImplementation.md   # Tag feature guide
+│   ├── PrdZabbixImplementation.md      # Original requirements
+│   └── ...
+└── LICENSE                             # MIT or Apache 2.0
 ```
 
 ---
