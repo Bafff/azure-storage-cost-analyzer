@@ -42,7 +42,7 @@ Lint all bash scripts:
 
 ```bash
 # Lint a specific file
-shellcheck azure-storage-cost-analysis-enhanced.sh
+shellcheck azure-storage-cost-analyzer.sh
 
 # Lint all .sh files
 find . -name "*.sh" -type f -exec shellcheck {} \;
@@ -97,7 +97,7 @@ Quick syntax validation:
 
 ```bash
 # Check syntax without executing
-bash -n azure-storage-cost-analysis-enhanced.sh
+bash -n azure-storage-cost-analyzer.sh
 
 # Check all scripts
 find . -name "*.sh" -type f -exec bash -n {} \; && echo "All scripts have valid syntax"
