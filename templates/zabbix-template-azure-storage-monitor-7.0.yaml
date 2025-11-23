@@ -47,6 +47,7 @@ zabbix_export:
         expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>500
         name: 'High total Azure storage waste: ${ITEM.LASTVALUE}'
         priority: WARNING
+        manual_close: 'YES'
         description: Total monthly storage waste across all subscriptions exceeds
           $500
         tags:
@@ -57,7 +58,8 @@ zabbix_export:
       - uuid: 48821f2411d24cd7bd29a7e5f826b5d3
         expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>1000
         name: 'Critical total Azure storage waste: ${ITEM.LASTVALUE}'
-        priority: HIGH
+        priority: AVERAGE
+        manual_close: 'YES'
         description: Total monthly storage waste across all subscriptions exceeds
           $1000
         tags:
@@ -124,6 +126,7 @@ zabbix_export:
         expression: last(/Azure Storage Cost Monitor/azure.storage.all.invalid_tags)>0
         name: 'Invalid review date tags detected: {ITEM.LASTVALUE}'
         priority: WARNING
+        manual_close: 'YES'
         description: 'Resources have malformed review date tags - check and correct
           tag format. Expected format: YYYY.MM.DD'
         tags:
@@ -164,6 +167,7 @@ zabbix_export:
         expression: now()-last(/Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)>86400
         name: Azure storage monitor script hasn't run in 24 hours
         priority: AVERAGE
+        manual_close: 'YES'
         description: The Azure storage cost analysis script hasn't reported data in
           over 24 hours
         tags:
@@ -200,6 +204,7 @@ zabbix_export:
         expression: last(/Azure Storage Cost Monitor/azure.storage.script.last_run_status)>0
         name: Azure storage monitor script execution failed
         priority: WARNING
+        manual_close: 'YES'
         description: Last execution of Azure storage cost analysis script reported
           errors
         tags:
@@ -289,6 +294,7 @@ zabbix_export:
         expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>100
         name: 'High storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
         priority: WARNING
+        manual_close: 'YES'
         description: Monthly storage waste exceeds $100 in subscription {#SUBSCRIPTION_NAME}
         tags:
         - tag: scope
@@ -296,7 +302,8 @@ zabbix_export:
       - uuid: 4ddf0227bd7543cfad9c160c7e5f71c2
         expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>250
         name: 'Critical storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
-        priority: HIGH
+        priority: AVERAGE
+        manual_close: 'YES'
         description: Monthly storage waste exceeds $250 in subscription {#SUBSCRIPTION_NAME}
         tags:
         - tag: scope
@@ -305,6 +312,7 @@ zabbix_export:
         expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
         name: 'Unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
         priority: WARNING
+        manual_close: 'YES'
         description: 'Unattached disks detected in subscription {#SUBSCRIPTION_NAME} (threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"})'
         tags:
         - tag: scope
