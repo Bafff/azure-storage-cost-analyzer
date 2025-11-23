@@ -975,15 +975,11 @@ calculate_resource_age_days() {
     # Parse ISO 8601 timestamp to epoch seconds
     # Azure format: "2024-10-15T10:30:45.1234567Z" or "2024-10-15T10:30:45Z"
     local created_epoch
-    created_epoch=$(date -d "$time_created" +%s 2>/dev/null)
-
-    if [[ $? -ne 0 ]]; then
+    if ! created_epoch=$(date -d "$time_created" +%s 2>/dev/null); then
         # Fallback: try removing fractional seconds if present
         local time_created_simplified
         time_created_simplified=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/')
-        created_epoch=$(date -d "$time_created_simplified" +%s 2>/dev/null)
-
-        if [[ $? -ne 0 ]]; then
+        if ! created_epoch=$(date -d "$time_created_simplified" +%s 2>/dev/null); then
             echo "-1"
             return 1
         fi
