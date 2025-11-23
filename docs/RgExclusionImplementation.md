@@ -134,7 +134,7 @@ Each resource is annotated with RG exclusion details:
   "Id": "/subscriptions/.../disks/my-disk",
   "Name": "my-disk",
   "ResourceGroup": "databricks-rg",
-  "TimeCreated": "2024-11-01T10:30:45Z",
+  "Created": "2024-11-01T10:30:45Z",
   "RgExclusionDetail": {
     "should_exclude": true,
     "reason": "excluded_rg_recent",

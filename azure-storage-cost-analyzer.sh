@@ -1144,7 +1144,7 @@ filter_resources_by_tags() {
         local rg_excluded=false
         if [[ -n "$exclude_rgs" ]]; then
             local resource_group=$(echo "$resource" | jq -r '.ResourceGroup // ""' 2>/dev/null)
-            local time_created=$(echo "$resource" | jq -r '.TimeCreated // ""' 2>/dev/null)
+            local time_created=$(echo "$resource" | jq -r '.Created // ""' 2>/dev/null)
 
             if [[ -n "$resource_group" ]]; then
                 local rg_exclusion_result
