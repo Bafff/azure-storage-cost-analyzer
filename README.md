@@ -51,4 +51,4 @@ Static sanity tests live in the `tests/` directory:
 They run in CI via `.github/workflows/lint.yml`. Add cloud-backed tests separately when credentials are available.
 
 ## Pipeline
-`azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.
+`.pipelines/azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.

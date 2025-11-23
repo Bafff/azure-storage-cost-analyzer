@@ -25,10 +25,12 @@ This is a Bash-based Azure storage cost analysis tool that:
 ```
 .
 ├── azure-storage-cost-analyzer.sh       # Main analyzer script
-├── validate-zabbix-template.py          # Template validation tool
 ├── azure-storage-monitor.conf.example   # Configuration template
-├── zabbix-template-*.yaml               # Zabbix monitoring templates
-├── azure-pipelines-storage-monitor.yml  # Azure DevOps pipeline
+├── .pipelines/                          # CI/CD pipelines
+│   └── azure-pipelines-storage-monitor.yml
+├── templates/                           # Zabbix templates and validation
+│   ├── zabbix-template-*.yaml
+│   └── validate-zabbix-template.py
 ├── tests/                               # Test scripts
 │   └── test-*.sh
 ├── docs/                                # Documentation
@@ -111,8 +113,8 @@ Update docs when:
 ### Adding a New Zabbix Metric
 
 1. Update `azure-storage-cost-analyzer.sh` (zabbix sender logic)
-2. Update `zabbix-template-azure-storage-monitor-7.0.yaml`
-3. Run `./validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml`
+2. Update `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+3. Run `./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 4. Update `docs/ZabbixIntegrationGuide.md` (document new metric)
 5. Update `docs/ZabbixTemplateAuthoring.md` if adding a pattern
 

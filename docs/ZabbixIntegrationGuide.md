@@ -82,7 +82,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Zabbix version**: 7.0.5 or higher
 - **Zabbix Trapper port**: 10051 (default) open and accessible from Azure DevOps agents
-- **Template imported**: `zabbix-template-azure-storage-monitor-7.0.yaml`
+- **Template imported**: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 - **Host created**: `azure-storage-monitor` (or custom name)
 
 ### 2. Azure DevOps Requirements
@@ -107,7 +107,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Log in to Zabbix frontend
 2. Navigate to: **Configuration** → **Templates**
 3. Click **Import**
-4. Upload `zabbix-template-azure-storage-monitor-7.0.yaml`
+4. Upload `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 5. Click **Import**
 
 ### Step 2: Create Host
@@ -172,7 +172,7 @@ Your Azure DevOps agents need `zabbix_sender` installed. Add this to your pipeli
 
 ### Pipeline YAML Example
 
-Create `azure-pipelines-storage-monitor.yml`:
+Create `.pipelines/azure-pipelines-storage-monitor.yml`:
 
 ```yaml
 trigger: none  # Manual or scheduled only

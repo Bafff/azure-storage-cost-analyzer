@@ -11,10 +11,11 @@ Run `git diff --name-only HEAD~10..HEAD` to see recently changed files.
 Group changes by type:
 
 - Configuration: `*.conf`, `*.conf.example`, `.env*` files
-- Core scripts: `azure-storage-cost-analyzer.sh`, `validate-zabbix-template.py`
+- Core scripts: `azure-storage-cost-analyzer.sh`
 - Test scripts: `tests/test-*.sh`
-- Templates: `zabbix-template-*.yaml`, `zabbix-template-*.xml`
-- Pipeline: `azure-pipelines-storage-monitor.yml`, `.github/workflows/*.yml`
+- Templates: `templates/zabbix-template-*.yaml`, `templates/zabbix-template-*.xml`
+- Validation: `templates/validate-zabbix-template.py`
+- Pipeline: `.pipelines/*.yml`, `.github/workflows/*.yml`
 - Docs: `docs/*.md`, `README.md`
 
 ## Step 2: Identify Required Updates
@@ -33,13 +34,13 @@ For each changed file, determine what docs need updating:
 - May update: `docs/QuickStartGuide.md`
 - Consider: `docs/UnusedResourcesGuide.md` if core logic changed
 
-**If Zabbix templates changed (`zabbix-template-*.yaml`):**
+**If Zabbix templates changed (`templates/zabbix-template-*.yaml`):**
 
 - Must update: `docs/ZabbixIntegrationGuide.md`
 - May update: `docs/ZabbixTemplateAuthoring.md`
 - May update: `docs/ZabbixSetup.md`
 
-**If validation script changed (`validate-zabbix-template.py`):**
+**If validation script changed (`templates/validate-zabbix-template.py`):**
 
 - Must update: `docs/ZabbixValidationTools.md`
 - May update: `docs/ZabbixTemplateAuthoring.md`
@@ -49,7 +50,7 @@ For each changed file, determine what docs need updating:
 - May update: `docs/TestResults.md`
 - Consider: `README.md` (Tests section)
 
-**If pipeline changed (`azure-pipelines-storage-monitor.yml`, `.github/workflows/*.yml`):**
+**If pipeline changed (`.pipelines/*.yml`, `.github/workflows/*.yml`):**
 
 - May update: `README.md` (Pipeline section)
 - May update: `docs/GithubMigrationGuide.md`
@@ -76,7 +77,7 @@ For script changes:
 
 For Zabbix changes:
 
-- Check template items/triggers in `zabbix-template-azure-storage-monitor-7.0.yaml`
+- Check template items/triggers in `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 - Verify `docs/ZabbixIntegrationGuide.md` documents all metrics
 - Check `docs/ZabbixTemplateAuthoring.md` for authoring guidance
 
@@ -90,7 +91,7 @@ Show me:
 ### Files Changed (last 10 commits)
 
 - `azure-storage-cost-analyzer.sh` - 3 commits
-- `zabbix-template-azure-storage-monitor-7.0.yaml` - 2 commits
+- `templates/zabbix-template-azure-storage-monitor-7.0.yaml` - 2 commits
 - `docs/ZabbixTemplateAuthoring.md` - 1 commit
 
 ### Required Updates

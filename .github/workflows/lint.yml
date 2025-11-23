@@ -124,7 +124,7 @@ jobs:
       - name: Run comprehensive Zabbix template validation
         run: |
           echo "Running comprehensive Zabbix template validation..."
-          python3 validate-zabbix-template.py --all
+          python3 templates/validate-zabbix-template.py --all
 
   static-tests:
     name: Static Repo Tests

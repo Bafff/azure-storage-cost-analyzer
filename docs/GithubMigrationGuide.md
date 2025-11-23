@@ -366,8 +366,11 @@ azure-storage-cost-analyzer/
 ├── PrdZabbixImplementation.md          # Original requirements
 ├── azure-storage-cost-analyzer.sh  # Main script
 ├── azure-storage-monitor.conf.example  # Config template
-├── azure-pipelines-storage-monitor.yml # ADO pipeline
-├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
+├── .pipelines/
+│   └── azure-pipelines-storage-monitor.yml # ADO pipeline
+├── templates/
+│   ├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
+│   └── validate-zabbix-template.py     # Template validator
 ├── tests/                             # Test scripts
 │   └── test-*.sh
 └── LICENSE                            # MIT or Apache 2.0

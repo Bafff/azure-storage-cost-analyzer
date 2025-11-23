@@ -57,13 +57,13 @@ There are several approaches to validating Zabbix templates:
 
 ```bash
 # Validate a single template
-python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
+python3 templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
 
 # Validate all templates in current directory
-python3 validate-zabbix-template.py --all
+python3 templates/validate-zabbix-template.py --all
 
 # Use in CI/CD
-python3 validate-zabbix-template.py template.xml || exit 1
+python3 templates/validate-zabbix-template.py template.xml || exit 1
 ```
 
 ### Pros
@@ -274,7 +274,7 @@ xmllint --noout template.xml
 **1. Local Development:**
 ```bash
 # Quick validation during development
-python3 validate-zabbix-template.py zabbix-template-azure-storage-monitor-7.0.yaml
+python3 templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
 ```
 
 **2. CI/CD (GitHub Actions):**
@@ -295,7 +295,7 @@ from pyzabbix import ZabbixAPI
 zapi = ZabbixAPI("https://test-zabbix.example.com")
 zapi.login("admin", "password")
 
-with open('zabbix-template-azure-storage-monitor-7.0.yaml') as f:
+with open('templates/zabbix-template-azure-storage-monitor-7.0.yaml') as f:
     result = zapi.configuration.import_({
         'format': 'xml',
         'source': f.read(),
@@ -309,7 +309,7 @@ EOF
 **4. Production Deployment:**
 ```bash
 # Use Zabbix CLI or PyZabbix to import to production
-zabbix-cli --import-template zabbix-template-azure-storage-monitor-7.0.yaml
+zabbix-cli --import-template templates/zabbix-template-azure-storage-monitor-7.0.yaml
 ```
 
 ---

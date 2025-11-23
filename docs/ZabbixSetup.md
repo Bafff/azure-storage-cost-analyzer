@@ -6,7 +6,7 @@ This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test th
 
 The repository includes a single Zabbix template in YAML format:
 
-**zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
+**templates/zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
 - Modern, clean YAML format
 - Includes all items, discovery rules, and triggers
 - Compact and maintainable (13K)
@@ -121,7 +121,7 @@ docker compose ps
 
 1. Navigate to **Data collection** → **Templates**
 2. Click **Import** button (top right)
-3. Choose file: `zabbix-template-azure-storage-monitor-7.0.yaml`
+3. Choose file: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
 4. Configure import rules:
    - ✓ Create new templates
    - ✓ Update existing templates
@@ -275,7 +275,7 @@ docker compose down -v
 ## Configuration Files
 
 - `docker-compose.yml` - Docker Compose configuration for Zabbix 7.0.1
-- `zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
+- `templates/zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
 - `test-zabbix-integration.sh` - Automated integration test script
 
 ## Default Credentials
