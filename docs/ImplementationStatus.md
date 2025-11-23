@@ -21,7 +21,7 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 | Zabbix output format | ✅ Fully implemented | Script (line 1297-1326) |
 | Zabbix 7.0.5 template | ✅ Created | `zabbix-template-azure-storage-monitor-7.0.yaml` |
 | Azure DevOps pipeline | ✅ Created | `azure-pipelines-storage-monitor.yml` |
-| Documentation | ✅ Complete | `ZABBIX-INTEGRATION-GUIDE.md` |
+| Documentation | ✅ Complete | `ZabbixIntegrationGuide.md` |
 
 ---
 
@@ -458,10 +458,10 @@ arguments: |
 | Resource | Location |
 |----------|----------|
 | Main README | `README.md` |
-| Zabbix integration guide | `ZABBIX-INTEGRATION-GUIDE.md` |
-| Quick start guide | `QUICK-START-GUIDE.md` |
-| Implementation PRD | `PRD_Zabbix_Implementation.md` |
-| Test results | `TEST_RESULTS.md` |
+| Zabbix integration guide | `ZabbixIntegrationGuide.md` |
+| Quick start guide | `QuickStartGuide.md` |
+| Implementation PRD | `PrdZabbixImplementation.md` |
+| Test results | `TestResults.md` |
 | TODO/changelog | `TODO.md` |
 
 ---

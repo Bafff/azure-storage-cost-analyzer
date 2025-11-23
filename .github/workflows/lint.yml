@@ -136,10 +136,10 @@ jobs:
 
       - name: Run grep/syntax test suite
         run: |
-          chmod +x test-phase1-features.sh test-phase2-zabbix.sh test-phase3-multi-subscription.sh
-          ./test-phase1-features.sh
-          ./test-phase2-zabbix.sh
-          ./test-phase3-multi-subscription.sh
+          chmod +x tests/test-phase1-features.sh tests/test-phase2-zabbix.sh tests/test-phase3-multi-subscription.sh
+          ./tests/test-phase1-features.sh
+          ./tests/test-phase2-zabbix.sh
+          ./tests/test-phase3-multi-subscription.sh
 
   summary:
     name: Linting Summary

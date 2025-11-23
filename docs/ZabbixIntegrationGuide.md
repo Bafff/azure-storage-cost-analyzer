@@ -485,8 +485,8 @@ Check if received in Zabbix: **Monitoring** → **Latest data** → Filter by ho
 For issues or questions:
 
 1. Check script help: `./azure-storage-cost-analyzer.sh --help`
-2. Review test results: `TEST_RESULTS.md`
-3. Check PRD: `PRD_Zabbix_Implementation.md`
+2. Review test results: `TestResults.md`
+3. Check PRD: `PrdZabbixImplementation.md`
 4. Contact: DevOps Team
 
 ---

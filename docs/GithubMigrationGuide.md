@@ -91,7 +91,7 @@ Features:
 - Azure DevOps pipeline integration
 - JSON/Text/Zabbix output formats
 
-See IMPLEMENTATION-STATUS.md for complete feature list.
+See ImplementationStatus.md for complete feature list.
 See TODO.md for remaining work on tag exclusion feature."
 
 # Create GitHub repo (choose public or private)
@@ -358,17 +358,18 @@ azure-storage-cost-analyzer/
 │       └── test.yml                    # CI/CD testing
 ├── .gitignore
 ├── README.md                           # Main documentation
-├── IMPLEMENTATION-STATUS.md            # Current features status
+├── ImplementationStatus.md             # Current features status
 ├── TODO.md                             # Remaining work
-├── TAG-EXCLUSION-IMPLEMENTATION.md     # Tag feature guide
-├── ZABBIX-INTEGRATION-GUIDE.md         # Zabbix setup guide
-├── QUICK-START-GUIDE.md               # Quick start
-├── PRD_Zabbix_Implementation.md       # Original requirements
+├── TagExclusionImplementation.md       # Tag feature guide
+├── ZabbixIntegrationGuide.md           # Zabbix setup guide
+├── QuickStartGuide.md                  # Quick start
+├── PrdZabbixImplementation.md          # Original requirements
 ├── azure-storage-cost-analyzer.sh  # Main script
 ├── azure-storage-monitor.conf.example  # Config template
 ├── azure-pipelines-storage-monitor.yml # ADO pipeline
 ├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
-├── test-*.sh                          # Test scripts
+├── tests/                             # Test scripts
+│   └── test-*.sh
 └── LICENSE                            # MIT or Apache 2.0
 ```
 
