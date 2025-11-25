@@ -1165,11 +1165,21 @@ filter_resources_by_tags() {
             if [[ -n "$resource_group" ]]; then
                 local rg_exclusion_result
                 rg_exclusion_result=$(check_rg_exclusion "$resource_group" "$time_created" "$exclude_rgs" "$age_threshold_days" 2>/dev/null)
+                
+                # Ensure we have valid JSON from the exclusion check
+                if [[ -z "$rg_exclusion_result" ]]; then
+                    rg_exclusion_result='{"should_exclude":false,"reason":"check_failed"}'
+                fi
 
-                local should_exclude_rg=$(echo "$rg_exclusion_result" | jq -r '.should_exclude' 2>/dev/null)
+                local should_exclude_rg=$(echo "$rg_exclusion_result" | jq -r '.should_exclude // "false"' 2>/dev/null)
+                [[ -z "$should_exclude_rg" ]] && should_exclude_rg="false"
 
-                # Annotate resource with RG exclusion status
-                resource=$(echo "$resource" | jq --argjson rgstatus "$rg_exclusion_result" '. + {RgExclusionDetail: $rgstatus}' 2>/dev/null)
+                # Annotate resource with RG exclusion status (preserve original on failure)
+                local annotated_resource
+                annotated_resource=$(echo "$resource" | jq --argjson rgstatus "$rg_exclusion_result" '. + {RgExclusionDetail: $rgstatus}' 2>/dev/null)
+                if [[ -n "$annotated_resource" ]]; then
+                    resource="$annotated_resource"
+                fi
 
                 if [[ "$should_exclude_rg" == "true" ]]; then
                     rg_excluded=true
@@ -1185,15 +1195,28 @@ filter_resources_by_tags() {
 
         if [[ -n "$tag_name" ]]; then
             local tags_json=$(echo "$resource" | jq -c '.Tags // {}' 2>/dev/null)
+            [[ -z "$tags_json" ]] && tags_json="{}"
+            
             local tag_status_result
             tag_status_result=$(check_resource_tag_status "$tags_json" "$tag_name" "$tag_format" 2>/dev/null)
+            
+            # Ensure we have valid JSON from the tag check
+            if [[ -z "$tag_status_result" ]]; then
+                tag_status_result='{"should_exclude":false,"tag_status":"none","review_date":"","is_valid":false,"is_future":false}'
+            fi
 
-            should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude' 2>/dev/null)
-            tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status' 2>/dev/null)
-            review_date=$(echo "$tag_status_result" | jq -r '.review_date' 2>/dev/null)
+            should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude // "false"' 2>/dev/null)
+            [[ -z "$should_exclude" ]] && should_exclude="false"
+            tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status // "none"' 2>/dev/null)
+            [[ -z "$tag_status_type" ]] && tag_status_type="none"
+            review_date=$(echo "$tag_status_result" | jq -r '.review_date // ""' 2>/dev/null)
 
-            # Annotate resource with detailed tag status
-            resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+            # Annotate resource with detailed tag status (preserve original on failure)
+            local annotated_resource
+            annotated_resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+            if [[ -n "$annotated_resource" ]]; then
+                resource="$annotated_resource"
+            fi
 
             # Track statistics
             case "$tag_status_type" in
