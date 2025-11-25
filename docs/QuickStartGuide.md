@@ -5,18 +5,16 @@
 ### 1) Unattached Disks Only (fast)
 ```bash
 ./azure-storage-cost-analyzer.sh unattached-disks-only \
-  "<SUBSCRIPTION_ID>" \
-  "2025-09-01T00:00:00+00:00" \
-  "2025-10-13T23:59:59+00:00"
+  --subscriptions "<SUBSCRIPTION_ID>" \
+  --days 30
 ```
 Runs in ~20-30 seconds; skips snapshots for speed.
 
 ### 2) Full Unused Report (disks + snapshots)
 ```bash
 ./azure-storage-cost-analyzer.sh unused-report \
-  "<SUBSCRIPTION_ID>" \
-  "2025-09-01T00:00:00+00:00" \
-  "2025-10-13T23:59:59+00:00"
+  --subscriptions "<SUBSCRIPTION_ID>" \
+  --days 30
 ```
 Use when snapshot counts are reasonable (<50); large snapshot sets will take longer.
 
@@ -31,11 +29,34 @@ Use when snapshot counts are reasonable (<50); large snapshot sets will take lon
 ./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
-  --output-format json \
-  --quiet
+  --output-format json
+```
+
+## With Exclusions
+```bash
+# Exclude resources with future review dates AND specific resource groups
+./azure-storage-cost-analyzer.sh unused-report \
+  --subscriptions all \
+  --days 30 \
+  --skip-tagged \
+  --exclude-rgs "databricks-rg,temp-rg,velero-backup-rg"
+```
+
+Resources in excluded RGs younger than 60 days are excluded from alerts.
+Resources older than 60 days are included as potential anomalies.
+
+## Skip Cost Management Validation
+```bash
+# Useful when Cost Management permissions vary across subscriptions
+./azure-storage-cost-analyzer.sh unused-report \
+  --subscriptions all \
+  --days 30 \
+  --skip-cost-validation
 ```
 
 ## Notes
-- Replace `<SUBSCRIPTION_ID>` with your target subscription.
+- Replace `<SUBSCRIPTION_ID>` with your target subscription or use `all` for all accessible subscriptions.
 - For Zabbix sending, add `--zabbix-send --zabbix-server <host> --zabbix-host azure-storage-monitor`.
-- Tag-based exclusion: set `Resource-Next-Review-Date=YYYY.MM.DD` on a disk/snapshot to suppress alerts until that date (when `exclude_pending_review=true` in config).
+- Tag-based exclusion: set `Resource-Next-Review-Date=YYYY.MM.DD` on a disk/snapshot to suppress alerts until that date (use `--skip-tagged` flag).
+- RG exclusion: use `--exclude-rgs "rg1,rg2"` to exclude ephemeral resource groups (default 60-day age threshold).
+- Works on both Linux and macOS (bash 3.2+ compatible).
