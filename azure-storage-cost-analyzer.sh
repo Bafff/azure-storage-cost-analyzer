@@ -2460,15 +2460,17 @@ lookup_cost() {
     echo "0.00"  # Default if not found
 }
 
-# Function to sort parallel arrays by size (ascending order)
+# Function to sort parallel arrays by size (ascending), with date as secondary sort
 # Bash 3.2 compatible bubble sort that keeps all arrays in sync
-# Usage: sort_by_size_ascending array1_name array2_name ... size_array_name
-# The last argument must be the array containing numeric sizes to sort by
+# Usage: sort_by_size_ascending array1_name array2_name ... date_array_name size_array_name
+# The last two arguments must be: date_array (for secondary sort) and size_array (for primary sort)
+# When sizes are equal, older items (earlier dates) come first
 # shellcheck disable=SC2154  # dynamic array indirection via eval
 sort_by_size_ascending() {
-    # Get all array names (last one is the size array)
+    # Get all array names (last one is size array, second-to-last is date array)
     local -a array_names=("$@")
     local size_array_name="${array_names[${#array_names[@]}-1]}"
+    local date_array_name="${array_names[${#array_names[@]}-2]}"
 
     # Get array length from size array
     # shellcheck disable=SC2154  # dynamic array name via eval
@@ -2479,14 +2481,29 @@ sort_by_size_ascending() {
         for ((j=0; j<n-i-1; j++)); do
             local k=$((j+1))
 
-            # Get sizes to compare
+            # Get sizes to compare (primary sort key)
             # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_j=\${${size_array_name}[$j]}"
             # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_k=\${${size_array_name}[$k]}"
 
-            # Compare sizes (ascending order)
+            # Get dates to compare (secondary sort key)
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_j=\${${date_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_k=\${${date_array_name}[$k]}"
+
+            local should_swap=false
+
+            # Primary sort: by size (ascending)
             if [[ $size_j -gt $size_k ]]; then
+                should_swap=true
+            # Secondary sort: when sizes equal, sort by date (oldest first)
+            elif [[ $size_j -eq $size_k ]] && [[ "$date_j" > "$date_k" ]]; then
+                should_swap=true
+            fi
+
+            if [[ "$should_swap" == "true" ]]; then
                 # Swap elements in ALL arrays
                 for array_name in "${array_names[@]}"; do
                     eval "local temp=\${${array_name}[$j]}"
@@ -3091,8 +3108,8 @@ analyze_unattached_disks_only() {
             echo "Sorting disks by creation date (oldest first)..." >&2
             sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
-            echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
+            echo "Sorting disks by size (then by date)..." >&2
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_createds disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3404,8 +3421,8 @@ generate_unused_resources_report() {
             echo "Sorting disks by creation date (oldest first)..." >&2
             sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
-            echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
+            echo "Sorting disks by size (then by date)..." >&2
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_createds disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3622,8 +3639,8 @@ generate_unused_resources_report() {
             echo "Sorting snapshots by creation date (oldest first)..." >&2
             sort_by_created_date snap_ids snap_names snap_skus snap_tag_statuses snap_tag_dates snap_sizes snap_createds
         else
-            echo "Sorting snapshots by size..." >&2
-            sort_by_size_ascending snap_ids snap_names snap_skus snap_createds snap_tag_statuses snap_tag_dates snap_sizes
+            echo "Sorting snapshots by size (then by date)..." >&2
+            sort_by_size_ascending snap_ids snap_names snap_skus snap_tag_statuses snap_tag_dates snap_createds snap_sizes
         fi
 
         # STEP 3: Loop through snapshots and print results using cost map (no API calls!)
