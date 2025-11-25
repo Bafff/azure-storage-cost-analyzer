@@ -1030,7 +1030,7 @@ check_rg_exclusion() {
     local resource_group="$1"
     local time_created="$2"
     local exclude_rgs="${3:-}"
-    local age_threshold_days="${4:-30}"
+    local age_threshold_days="${4:-60}"
 
     # If no exclusion list, include all
     if [[ -z "$exclude_rgs" ]]; then
@@ -1104,7 +1104,7 @@ filter_resources_by_tags() {
     local skip_tagged="${4:-false}"
     local show_tagged_only="${5:-false}"
     local exclude_rgs="${6:-}"
-    local age_threshold_days="${7:-30}"
+    local age_threshold_days="${7:-60}"
 
     # If both tag filtering AND RG exclusion are disabled, return all resources unchanged
     if [[ -z "$tag_name" && -z "$exclude_rgs" ]]; then
@@ -1675,7 +1675,7 @@ collect_subscription_metrics() {
             "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -1754,7 +1754,7 @@ collect_subscription_metrics() {
             "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -3077,7 +3077,7 @@ analyze_unattached_disks_only() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         tag_filter_stats="$filtered_result"
@@ -3389,7 +3389,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_tag_filter_stats="$filtered_result"
@@ -3626,7 +3626,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_tag_filter_stats="$filtered_result"

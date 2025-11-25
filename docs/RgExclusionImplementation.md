@@ -14,8 +14,8 @@ This feature allows excluding specific Resource Groups from cost analysis and al
 
 Databricks creates and deletes managed disks regularly as part of normal cluster operations. These ephemeral resources:
 - Are created/deleted frequently (hours/days)
-- Don't need alerts for recent resources (<30 days)
-- **BUT** if a Databricks disk is >30 days old, it's likely orphaned and needs investigation
+- Don't need alerts for recent resources (<60 days)
+- **BUT** if a Databricks disk is >60 days old, it's likely orphaned and needs investigation
 
 ## Configuration
 
@@ -202,10 +202,10 @@ exclude_rg_age_threshold_days = 30
 **Configuration:**
 ```ini
 exclude_resource_groups = databricks-rg,temp-rg,ephemeral-rg
-exclude_rg_age_threshold_days = 30
+exclude_rg_age_threshold_days = 60
 ```
 
-All resources in `databricks-rg`, `temp-rg`, and `ephemeral-rg` are excluded if <30 days old, included if >=30 days old.
+All resources in `databricks-rg`, `temp-rg`, and `ephemeral-rg` are excluded if <60 days old, included if >=60 days old.
 
 ## Integration Points
 
@@ -232,7 +232,7 @@ filtered_result=$(filter_resources_by_tags \
     "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
     "false" \
     "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
-    "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}")
+    "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}")
 ```
 
 **Updated Locations:**
@@ -256,7 +256,7 @@ filtered_result=$(filter_resources_by_tags \
   --days 30 \
   --exclude-resource-groups databricks-rg
 ```
-**Expected:** Databricks resources <30 days excluded
+**Expected:** Databricks resources <60 days excluded
 
 ### Test 3: Custom Threshold
 ```bash
