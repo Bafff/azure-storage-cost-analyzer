@@ -2285,9 +2285,10 @@ send_batch_to_zabbix() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix server $server:$port..."
 
-    # Send all metrics in one batch
+    # Send all metrics in one batch (-T enables timestamp in input file)
     if zabbix_sender -z "$server" \
                      -p "$port" \
+                     -T \
                      -i "$batch_file" \
                      -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
         log_progress "Successfully sent all metrics to Zabbix"
@@ -2327,8 +2328,9 @@ send_batch_to_zabbix_with_config() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix using config: $config_file..."
 
-    # Send using config file
+    # Send using config file (-T enables timestamp in input file)
     if zabbix_sender -c "$config_file" \
+                     -T \
                      -i "$batch_file" \
                      -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
         log_progress "Successfully sent all metrics to Zabbix"
