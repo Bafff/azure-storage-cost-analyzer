@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Zabbix Version:** 7.0.5+
 **Script:** `azure-storage-cost-analyzer.sh`
-**Last Updated:** 2025-11-20
+**Last Updated:** 2025-11-25
 
 ---
 
@@ -424,6 +424,20 @@ brew install zabbix
    tail -f /var/log/zabbix/zabbix_server.log | grep azure-storage
    ```
 
+### Issue: Items show "Not supported" with type mismatch error
+
+**Error:** `Value of type "string" is not suitable for value type "Numeric (unsigned)"`
+
+This happens when corrupted data (e.g., with timestamps in value field) was sent to items.
+
+**Solution:**
+1. In Zabbix: **Data collection** → **Hosts** → `azure-storage-monitor` → **Items**
+2. Select affected items
+3. Click **Mass update** → **Clear history and trends**
+4. Or recreate the host from scratch
+
+**Prevention:** Always use format `hostname key value` without timestamps.
+
 ### Issue: Permission denied accessing subscriptions
 
 **Error:** `AuthorizationFailed` when querying Azure
@@ -472,9 +486,22 @@ Enable verbose logging:
 Send test metric to Zabbix:
 
 ```bash
-echo "azure-storage-monitor azure.storage.all.total_waste.monthly $(date +%s) 123.45" | \
-  zabbix_sender -z your-zabbix-server.com -p 10051 -i -
+# Single metric (no timestamp - Zabbix uses current time)
+zabbix_sender -z your-zabbix-server.com -p 10051 \
+  -s "azure-storage-monitor" \
+  -k "azure.storage.all.total_waste.monthly" \
+  -o "123.45"
+
+# Batch file format (hostname key value - NO timestamps)
+cat > /tmp/test_batch.txt << 'EOF'
+azure-storage-monitor azure.storage.all.total_waste.monthly 123.45
+azure-storage-monitor azure.storage.all.total_disks 5
+EOF
+zabbix_sender -z your-zabbix-server.com -p 10051 -i /tmp/test_batch.txt
 ```
+
+> **Important:** Do NOT use timestamps in batch files. The format is `hostname key value` only.
+> Using `-T` flag with timestamps can cause data to be silently ignored.
 
 Check if received in Zabbix: **Monitoring** → **Latest data** → Filter by host
 
