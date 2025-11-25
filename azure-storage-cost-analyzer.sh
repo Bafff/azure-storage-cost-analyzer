@@ -1039,12 +1039,17 @@ check_rg_exclusion() {
     fi
 
     # Check if resource group is in exclusion list (case-insensitive match)
+    # Use tr for bash 3.2 compatibility (macOS /bin/bash doesn't support ${var,,})
     local is_excluded=false
+    local rg_lower
+    rg_lower=$(echo "$resource_group" | tr '[:upper:]' '[:lower:]')
     IFS=',' read -ra EXCLUDE_ARRAY <<< "$exclude_rgs"
     for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
         # Trim whitespace
         excluded_rg=$(echo "$excluded_rg" | xargs)
-        if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+        local excluded_rg_lower
+        excluded_rg_lower=$(echo "$excluded_rg" | tr '[:upper:]' '[:lower:]')
+        if [[ -n "$excluded_rg" && "$rg_lower" == "$excluded_rg_lower" ]]; then
             is_excluded=true
             break
         fi
@@ -4415,10 +4420,15 @@ main() {
     # Validate resource group filtering configuration
     if [[ -n "$resource_group" && -n "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" ]]; then
         # Check if the include RG is also in the exclude list
+        # Use tr for bash 3.2 compatibility (macOS /bin/bash)
+        local rg_lower
+        rg_lower=$(echo "$resource_group" | tr '[:upper:]' '[:lower:]')
         IFS=',' read -ra EXCLUDE_ARRAY <<< "${CONFIG_EXCLUDE_RESOURCE_GROUPS}"
         for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
             excluded_rg=$(echo "$excluded_rg" | xargs)
-            if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+            local excluded_rg_lower
+            excluded_rg_lower=$(echo "$excluded_rg" | tr '[:upper:]' '[:lower:]')
+            if [[ -n "$excluded_rg" && "$rg_lower" == "$excluded_rg_lower" ]]; then
                 echo "Error: Resource group '$resource_group' appears in both include (--resource-group) and exclude (--exclude-resource-groups) lists"
                 echo "This configuration conflict is not allowed. Please specify the resource group in only one list."
                 exit $EXIT_CONFIG_ERROR
