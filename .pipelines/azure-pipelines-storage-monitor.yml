@@ -25,6 +25,8 @@ schedules:
 
 pool:
   name: 'ArkadiumOnline'
+  demands:
+    - Agent.OS -equals Linux
 
 variables:
   - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
