@@ -24,7 +24,7 @@ schedules:
     always: true  # Run even if no code changes
 
 pool:
-  vmImage: 'ubuntu-latest'  # Ubuntu agents have Azure CLI pre-installed
+  name: 'ArkadiumOnline'
 
 variables:
   - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
@@ -78,7 +78,7 @@ stages:
               # NOTE: This is your Azure DevOps SERVICE CONNECTION name (NOT an Azure subscription ID)
               # The script will scan ALL Azure subscriptions that this service connection has access to
               # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
-              azureSubscription: 'Azure-Service-Connection'  # ⚠️ UPDATE THIS to your service connection name
+              azureSubscription: 'zabbix'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
               scriptLocation: 'scriptPath'
               scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
