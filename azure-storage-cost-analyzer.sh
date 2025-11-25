@@ -2979,6 +2979,12 @@ analyze_unattached_disks_only() {
     local tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged or show_tagged_only is enabled, use default tag name if not configured
+    if [[ ("$skip_tagged" == "true" || "$show_tagged_only" == "true") && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
@@ -3285,6 +3291,12 @@ generate_unused_resources_report() {
     local disk_tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged or show_tagged_only is enabled, use default tag name if not configured
+    if [[ ("$skip_tagged" == "true" || "$show_tagged_only" == "true") && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
