@@ -4611,7 +4611,8 @@ main() {
                         if send_batch_to_zabbix "$zabbix_server" "$zabbix_port" "$batch_file"; then
                             log_progress "Metrics successfully sent to Zabbix"
                         else
-                            log_progress "WARNING: Failed to send metrics to Zabbix"
+                            log_progress "ERROR: Failed to send metrics to Zabbix"
+                            exit_code=1
                         fi
                     elif [[ -n "$zabbix_config_file" ]]; then
                         log_progress "Sending metrics to Zabbix using config file..."
@@ -4621,7 +4622,8 @@ main() {
                         if send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
                             log_progress "Metrics successfully sent to Zabbix"
                         else
-                            log_progress "WARNING: Failed to send metrics to Zabbix"
+                            log_progress "ERROR: Failed to send metrics to Zabbix"
+                            exit_code=1
                         fi
                     else
                         log_progress "ERROR: --zabbix-send requires either (--zabbix-server and --zabbix-host) or --zabbix-config"
