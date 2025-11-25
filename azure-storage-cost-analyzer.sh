@@ -170,42 +170,46 @@ validate_azure_permissions() {
 
     log_verbose "Checking permissions for user: $current_user"
 
-    # Check for Reader role or higher (Contributor, Owner)
-    local role_assignments
-    role_assignments=$(az_with_timeout role assignment list \
-        --assignee "$current_user" \
-        --subscription "$subscription_id" \
-        --query "[?scope=='/subscriptions/${subscription_id}' || starts_with(scope, '/subscriptions/${subscription_id}/')].roleDefinitionName" \
-        -o tsv 2>/dev/null)
-
-    if [[ -n "$role_assignments" ]]; then
-        if echo "$role_assignments" | grep -qiE '(Reader|Contributor|Owner|Cost Management Reader)'; then
-            has_reader_role=true
-            log_verbose "✓ Found required role assignment"
-        fi
+    # Use capability-based validation instead of direct role assignment check
+    # This handles group-based roles, management group inheritance, and PIM
+    log_verbose "Validating read access to subscription..."
+    if az_with_timeout group list --subscription "$subscription_id" --query "[0].name" -o tsv >/dev/null 2>&1; then
+        has_reader_role=true
+        log_verbose "✓ Read access confirmed (can list resource groups)"
     fi
 
     if [[ "$has_reader_role" == "false" ]]; then
-        log_progress "ERROR: User '$current_user' does not have Reader role or higher on subscription '$subscription_id'"
-        log_progress "Required: At least 'Reader' role on the subscription"
+        log_progress "ERROR: User '$current_user' does not have read access to subscription '$subscription_id'"
+        log_progress "Required: At least 'Reader' role on the subscription (direct, via group, or inherited)"
         return 1
     fi
 
-    # Validate Cost Management access by attempting a simple cost query
+    # Validate Cost Management access by attempting a simple cost query via REST API
+    # Note: az costmanagement query was removed in extension v0.2.1
     log_verbose "Validating Cost Management access..."
     local yesterday today cost_query_result
     yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
     today=$(date -u '+%Y-%m-%d')
 
-    if cost_query_result=$(az_with_timeout costmanagement query \
-        --type "ActualCost" \
-        --dataset-aggregation "{\"totalCost\":{\"name\":\"PreTaxCost\",\"function\":\"Sum\"}}" \
-        --dataset-grouping name="ResourceId" type="Dimension" \
-        --timeframe "Custom" \
-        --time-period from="$yesterday" to="$today" \
-        --scope "/subscriptions/$subscription_id" \
-        --query "rows" \
-        -o tsv 2>/dev/null); then
+    if cost_query_result=$(az_with_timeout rest --method POST \
+        --url "https://management.azure.com/subscriptions/$subscription_id/providers/Microsoft.CostManagement/query?api-version=2023-03-01" \
+        --body "{
+            \"type\": \"ActualCost\",
+            \"timeframe\": \"Custom\",
+            \"timePeriod\": {
+                \"from\": \"$yesterday\",
+                \"to\": \"$today\"
+            },
+            \"dataset\": {
+                \"granularity\": \"None\",
+                \"aggregation\": {
+                    \"totalCost\": {
+                        \"name\": \"Cost\",
+                        \"function\": \"Sum\"
+                    }
+                }
+            }
+        }" 2>/dev/null); then
         has_cost_access=true
         log_verbose "✓ Cost Management access validated"
     else
