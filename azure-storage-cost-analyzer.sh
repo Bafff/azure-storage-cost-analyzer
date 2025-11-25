@@ -1775,25 +1775,25 @@ collect_subscription_metrics() {
         disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
     fi
 
-    # Output JSON
+    # Output JSON (with defensive defaults to ensure valid JSON even if variables are empty)
     cat <<EOF
 {
   "subscription_id": "$subscription_id",
   "subscription_name": "$subscription_name",
   "status": "success",
   "metrics": {
-    "unattached_disks_count": $disk_count,
-    "unattached_disks_size_gb": $total_disk_size,
-    "unattached_disks_cost_monthly": $(printf "%.2f" "$total_disk_cost"),
-    "snapshots_count": $snapshot_count,
-    "snapshots_size_gb": $total_snapshot_size,
-    "snapshots_cost_monthly": $(printf "%.2f" "$total_snapshot_cost"),
-    "total_waste_monthly": $(printf "%.2f" "$total_waste_monthly"),
-    "total_waste_annual": $(printf "%.2f" "$total_waste_annual"),
-    "invalid_tags": $total_invalid_tags,
-    "excluded_pending_review": $total_excluded_pending
+    "unattached_disks_count": ${disk_count:-0},
+    "unattached_disks_size_gb": ${total_disk_size:-0},
+    "unattached_disks_cost_monthly": $(printf "%.2f" "${total_disk_cost:-0}"),
+    "snapshots_count": ${snapshot_count:-0},
+    "snapshots_size_gb": ${total_snapshot_size:-0},
+    "snapshots_cost_monthly": $(printf "%.2f" "${total_snapshot_cost:-0}"),
+    "total_waste_monthly": $(printf "%.2f" "${total_waste_monthly:-0}"),
+    "total_waste_annual": $(printf "%.2f" "${total_waste_annual:-0}"),
+    "invalid_tags": ${total_invalid_tags:-0},
+    "excluded_pending_review": ${total_excluded_pending:-0}
   },
-  "disk_details": $disk_details_json
+  "disk_details": ${disk_details_json:-[]}
 }
 EOF
 
@@ -1976,16 +1976,16 @@ EOF
 
             # Per-subscription metrics
             for result in "${subscription_results[@]}"; do
-                local sub_id=$(echo "$result" | jq -r '.subscription_id')
-                local sub_name=$(echo "$result" | jq -r '.subscription_name')
-                local sub_status=$(echo "$result" | jq -r '.status')
+                local sub_id=$(echo "$result" | jq -r '.subscription_id // ""' 2>/dev/null || echo "")
+                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
+                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
 
-                if [[ "$sub_status" == "success" ]]; then
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly')
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count')
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count')
-                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0')
-                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0')
+                if [[ "$sub_status" == "success" && -n "$sub_id" ]]; then
+                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
+                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
+                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
+                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
+                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
 
                     echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste"
                     echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks"
@@ -2013,13 +2013,13 @@ EOF
             printf "%-40s | %-10s | %-10s | %-15s\n" "----------------------------------------" "----------" "----------" "---------------"
 
             for result in "${subscription_results[@]}"; do
-                local sub_name=$(echo "$result" | jq -r '.subscription_name')
-                local sub_status=$(echo "$result" | jq -r '.status')
+                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
+                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
 
                 if [[ "$sub_status" == "success" ]]; then
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count')
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count')
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly')
+                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
+                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
+                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
 
                     printf "%-40s | %-10d | %-10d | \$%-14.2f\n" "$sub_name" "$sub_disks" "$sub_snapshots" "$sub_waste"
                 else
