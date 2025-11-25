@@ -32,13 +32,33 @@ chmod +x azure-storage-cost-analyzer.sh
   --zabbix-send \
   --zabbix-server monitoring.example.com \
   --zabbix-host azure-storage-monitor
+
+# With exclusions (exclude tagged resources + specific RGs)
+./azure-storage-cost-analyzer.sh unused-report \
+  --subscriptions all \
+  --days 30 \
+  --skip-tagged \
+  --exclude-rgs "databricks-rg,temp-rg"
 ```
+
+### Key CLI Flags
+| Flag | Description |
+|------|-------------|
+| `--subscriptions <id\|all>` | Single subscription ID or `all` for multi-subscription |
+| `--days N` | Analyze last N days (alternative: `--last-month`) |
+| `--skip-tagged` | Exclude resources with future `Resource-Next-Review-Date` tags |
+| `--exclude-rgs "rg1,rg2"` | Exclude resource groups (resources <60 days old) |
+| `--exclude-rg-age-threshold-days N` | Override default 60-day threshold |
+| `--skip-cost-validation` | Skip Cost Management permission check |
+| `--sort-by-date` | Sort output by creation date instead of size |
+| `--output-format <json\|text>` | Output format (default: text) |
 
 ## Prerequisites
 - Azure CLI authenticated (`az login`)
 - `jq`, `bc`, `timeout`/`gtimeout`
 - Optional: `zabbix_sender` for metrics
 - Permissions per subscription: at least `Reader` + `Cost Management Reader` (the script validates before running)
+- **Platform:** Works on Linux and macOS (bash 3.2+ compatible)
 
 ## Configuration
 Copy `azure-storage-monitor.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.

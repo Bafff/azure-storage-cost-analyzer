@@ -153,8 +153,10 @@ check_dependencies() {
 # Function to validate Azure permissions for a subscription
 # Args: subscription_id
 # Returns: 0 if permissions are valid, 1 otherwise
+# Args: subscription_id [skip_cost_validation]
 validate_azure_permissions() {
     local subscription_id="$1"
+    local skip_cost_validation="${2:-false}"
     local current_user
     local has_reader_role=false
     local has_cost_access=false
@@ -170,50 +172,59 @@ validate_azure_permissions() {
 
     log_verbose "Checking permissions for user: $current_user"
 
-    # Check for Reader role or higher (Contributor, Owner)
-    local role_assignments
-    role_assignments=$(az_with_timeout role assignment list \
-        --assignee "$current_user" \
-        --subscription "$subscription_id" \
-        --query "[?scope=='/subscriptions/${subscription_id}' || starts_with(scope, '/subscriptions/${subscription_id}/')].roleDefinitionName" \
-        -o tsv 2>/dev/null)
-
-    if [[ -n "$role_assignments" ]]; then
-        if echo "$role_assignments" | grep -qiE '(Reader|Contributor|Owner|Cost Management Reader)'; then
-            has_reader_role=true
-            log_verbose "✓ Found required role assignment"
-        fi
+    # Use capability-based validation instead of direct role assignment check
+    # This handles group-based roles, management group inheritance, and PIM
+    log_verbose "Validating read access to subscription..."
+    if az_with_timeout group list --subscription "$subscription_id" --query "[0].name" -o tsv >/dev/null 2>&1; then
+        has_reader_role=true
+        log_verbose "✓ Read access confirmed (can list resource groups)"
     fi
 
     if [[ "$has_reader_role" == "false" ]]; then
-        log_progress "ERROR: User '$current_user' does not have Reader role or higher on subscription '$subscription_id'"
-        log_progress "Required: At least 'Reader' role on the subscription"
+        log_progress "ERROR: User '$current_user' does not have read access to subscription '$subscription_id'"
+        log_progress "Required: At least 'Reader' role on the subscription (direct, via group, or inherited)"
         return 1
     fi
 
-    # Validate Cost Management access by attempting a simple cost query
-    log_verbose "Validating Cost Management access..."
-    local yesterday today cost_query_result
-    yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
-    today=$(date -u '+%Y-%m-%d')
-
-    if cost_query_result=$(az_with_timeout costmanagement query \
-        --type "ActualCost" \
-        --dataset-aggregation "{\"totalCost\":{\"name\":\"PreTaxCost\",\"function\":\"Sum\"}}" \
-        --dataset-grouping name="ResourceId" type="Dimension" \
-        --timeframe "Custom" \
-        --time-period from="$yesterday" to="$today" \
-        --scope "/subscriptions/$subscription_id" \
-        --query "rows" \
-        -o tsv 2>/dev/null); then
+    # Validate Cost Management access by attempting a simple cost query via REST API
+    # Note: az costmanagement query was removed in extension v0.2.1
+    if [[ "$skip_cost_validation" == "true" ]]; then
+        log_verbose "⚠ Skipping Cost Management validation (--skip-cost-validation flag)"
         has_cost_access=true
-        log_verbose "✓ Cost Management access validated"
     else
-        log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
-        log_progress "Required: Cost Management Reader role or equivalent permissions"
-        log_progress "Hint: Grant 'Cost Management Reader' role with:"
-        log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
-        return 1
+        log_verbose "Validating Cost Management access..."
+        local yesterday today cost_query_result
+        yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
+        today=$(date -u '+%Y-%m-%d')
+
+        if cost_query_result=$(az_with_timeout rest --method POST \
+            --url "https://management.azure.com/subscriptions/$subscription_id/providers/Microsoft.CostManagement/query?api-version=2023-03-01" \
+            --body "{
+                \"type\": \"ActualCost\",
+                \"timeframe\": \"Custom\",
+                \"timePeriod\": {
+                    \"from\": \"$yesterday\",
+                    \"to\": \"$today\"
+                },
+                \"dataset\": {
+                    \"granularity\": \"None\",
+                    \"aggregation\": {
+                        \"totalCost\": {
+                            \"name\": \"Cost\",
+                            \"function\": \"Sum\"
+                        }
+                    }
+                }
+            }" 2>/dev/null); then
+            has_cost_access=true
+            log_verbose "✓ Cost Management access validated"
+        else
+            log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
+            log_progress "Required: Cost Management Reader role or equivalent permissions"
+            log_progress "Hint: Grant 'Cost Management Reader' role with:"
+            log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
+            return 1
+        fi
     fi
 
     log_verbose "✓ All required permissions validated for subscription: $subscription_id"
@@ -975,11 +986,25 @@ calculate_resource_age_days() {
     # Parse ISO 8601 timestamp to epoch seconds
     # Azure format: "2024-10-15T10:30:45.1234567Z" or "2024-10-15T10:30:45Z"
     local created_epoch
-    if ! created_epoch=$(date -d "$time_created" +%s 2>/dev/null); then
-        # Fallback: try removing fractional seconds if present
-        local time_created_simplified
-        time_created_simplified=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/')
-        if ! created_epoch=$(date -d "$time_created_simplified" +%s 2>/dev/null); then
+    
+    # Remove fractional seconds and trailing Z for consistent parsing
+    local time_created_clean
+    time_created_clean=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/' | sed 's/Z$//')
+    
+    # Try GNU date first (Linux)
+    if created_epoch=$(date -d "$time_created" +%s 2>/dev/null); then
+        : # Success with GNU date
+    elif created_epoch=$(date -d "${time_created_clean}" +%s 2>/dev/null); then
+        : # Success with GNU date (cleaned timestamp)
+    # Try macOS/BSD date
+    elif created_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$time_created_clean" +%s 2>/dev/null); then
+        : # Success with BSD date
+    else
+        # Last resort: try Python if available
+        if command -v python3 &>/dev/null; then
+            created_epoch=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('${time_created_clean}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null)
+        fi
+        if [[ -z "$created_epoch" ]]; then
             echo "-1"
             return 1
         fi
@@ -1005,7 +1030,7 @@ check_rg_exclusion() {
     local resource_group="$1"
     local time_created="$2"
     local exclude_rgs="${3:-}"
-    local age_threshold_days="${4:-30}"
+    local age_threshold_days="${4:-60}"
 
     # If no exclusion list, include all
     if [[ -z "$exclude_rgs" ]]; then
@@ -1014,12 +1039,17 @@ check_rg_exclusion() {
     fi
 
     # Check if resource group is in exclusion list (case-insensitive match)
+    # Use tr for bash 3.2 compatibility (macOS /bin/bash doesn't support ${var,,})
     local is_excluded=false
+    local rg_lower
+    rg_lower=$(echo "$resource_group" | tr '[:upper:]' '[:lower:]')
     IFS=',' read -ra EXCLUDE_ARRAY <<< "$exclude_rgs"
     for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
         # Trim whitespace
         excluded_rg=$(echo "$excluded_rg" | xargs)
-        if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+        local excluded_rg_lower
+        excluded_rg_lower=$(echo "$excluded_rg" | tr '[:upper:]' '[:lower:]')
+        if [[ -n "$excluded_rg" && "$rg_lower" == "$excluded_rg_lower" ]]; then
             is_excluded=true
             break
         fi
@@ -1074,7 +1104,7 @@ filter_resources_by_tags() {
     local skip_tagged="${4:-false}"
     local show_tagged_only="${5:-false}"
     local exclude_rgs="${6:-}"
-    local age_threshold_days="${7:-30}"
+    local age_threshold_days="${7:-60}"
 
     # If both tag filtering AND RG exclusion are disabled, return all resources unchanged
     if [[ -z "$tag_name" && -z "$exclude_rgs" ]]; then
@@ -1154,11 +1184,21 @@ filter_resources_by_tags() {
             if [[ -n "$resource_group" ]]; then
                 local rg_exclusion_result
                 rg_exclusion_result=$(check_rg_exclusion "$resource_group" "$time_created" "$exclude_rgs" "$age_threshold_days" 2>/dev/null)
+                
+                # Ensure we have valid JSON from the exclusion check
+                if [[ -z "$rg_exclusion_result" ]]; then
+                    rg_exclusion_result='{"should_exclude":false,"reason":"check_failed"}'
+                fi
 
-                local should_exclude_rg=$(echo "$rg_exclusion_result" | jq -r '.should_exclude' 2>/dev/null)
+                local should_exclude_rg=$(echo "$rg_exclusion_result" | jq -r '.should_exclude // "false"' 2>/dev/null)
+                [[ -z "$should_exclude_rg" ]] && should_exclude_rg="false"
 
-                # Annotate resource with RG exclusion status
-                resource=$(echo "$resource" | jq --argjson rgstatus "$rg_exclusion_result" '. + {RgExclusionDetail: $rgstatus}' 2>/dev/null)
+                # Annotate resource with RG exclusion status (preserve original on failure)
+                local annotated_resource
+                annotated_resource=$(echo "$resource" | jq --argjson rgstatus "$rg_exclusion_result" '. + {RgExclusionDetail: $rgstatus}' 2>/dev/null)
+                if [[ -n "$annotated_resource" ]]; then
+                    resource="$annotated_resource"
+                fi
 
                 if [[ "$should_exclude_rg" == "true" ]]; then
                     rg_excluded=true
@@ -1174,15 +1214,28 @@ filter_resources_by_tags() {
 
         if [[ -n "$tag_name" ]]; then
             local tags_json=$(echo "$resource" | jq -c '.Tags // {}' 2>/dev/null)
+            [[ -z "$tags_json" ]] && tags_json="{}"
+            
             local tag_status_result
             tag_status_result=$(check_resource_tag_status "$tags_json" "$tag_name" "$tag_format" 2>/dev/null)
+            
+            # Ensure we have valid JSON from the tag check
+            if [[ -z "$tag_status_result" ]]; then
+                tag_status_result='{"should_exclude":false,"tag_status":"none","review_date":"","is_valid":false,"is_future":false}'
+            fi
 
-            should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude' 2>/dev/null)
-            tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status' 2>/dev/null)
-            review_date=$(echo "$tag_status_result" | jq -r '.review_date' 2>/dev/null)
+            should_exclude=$(echo "$tag_status_result" | jq -r '.should_exclude // "false"' 2>/dev/null)
+            [[ -z "$should_exclude" ]] && should_exclude="false"
+            tag_status_type=$(echo "$tag_status_result" | jq -r '.tag_status // "none"' 2>/dev/null)
+            [[ -z "$tag_status_type" ]] && tag_status_type="none"
+            review_date=$(echo "$tag_status_result" | jq -r '.review_date // ""' 2>/dev/null)
 
-            # Annotate resource with detailed tag status
-            resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+            # Annotate resource with detailed tag status (preserve original on failure)
+            local annotated_resource
+            annotated_resource=$(echo "$resource" | jq --argjson tagstatus "$tag_status_result" '. + {TagStatusDetail: $tagstatus}' 2>/dev/null)
+            if [[ -n "$annotated_resource" ]]; then
+                resource="$annotated_resource"
+            fi
 
             # Track statistics
             case "$tag_status_type" in
@@ -1565,6 +1618,8 @@ collect_subscription_metrics() {
     local end_date="$3"
     local resource_group="${4:-}"
     local include_attached="${5:-false}"
+    local skip_tagged="${6:-false}"
+    local skip_cost_validation="${7:-false}"
 
     log_verbose "Collecting metrics for subscription: $subscription_id"
 
@@ -1575,7 +1630,7 @@ collect_subscription_metrics() {
     }
 
     # Validate permissions for this subscription
-    if ! validate_azure_permissions "$subscription_id"; then
+    if ! validate_azure_permissions "$subscription_id" "$skip_cost_validation"; then
         log_progress "ERROR: Insufficient permissions on subscription: $subscription_id"
         return 1
     fi
@@ -1594,10 +1649,21 @@ collect_subscription_metrics() {
     local disk_invalid_tags=0
     local disk_excluded_pending=0
 
-    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config or via CLI)
     local unattached_disks_json
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged is enabled via CLI, use default tag name if not configured
+    if [[ "$skip_tagged" == "true" && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
+    # Determine effective skip_tagged value (CLI flag OR config)
+    local effective_skip_tagged="$skip_tagged"
+    if [[ "$effective_skip_tagged" != "true" && "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" == "true" ]]; then
+        effective_skip_tagged="true"
+    fi
 
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
@@ -1606,10 +1672,10 @@ collect_subscription_metrics() {
             "$unattached_disks_raw" \
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
-            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -1676,7 +1742,7 @@ collect_subscription_metrics() {
     local snapshot_invalid_tags=0
     local snapshot_excluded_pending=0
 
-    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config or via CLI)
     local snapshots_json
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$snapshots_raw" ]]; then
@@ -1685,10 +1751,10 @@ collect_subscription_metrics() {
             "$snapshots_raw" \
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
-            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -1759,25 +1825,25 @@ collect_subscription_metrics() {
         disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
     fi
 
-    # Output JSON
+    # Output JSON (with defensive defaults to ensure valid JSON even if variables are empty)
     cat <<EOF
 {
   "subscription_id": "$subscription_id",
   "subscription_name": "$subscription_name",
   "status": "success",
   "metrics": {
-    "unattached_disks_count": $disk_count,
-    "unattached_disks_size_gb": $total_disk_size,
-    "unattached_disks_cost_monthly": $(printf "%.2f" "$total_disk_cost"),
-    "snapshots_count": $snapshot_count,
-    "snapshots_size_gb": $total_snapshot_size,
-    "snapshots_cost_monthly": $(printf "%.2f" "$total_snapshot_cost"),
-    "total_waste_monthly": $(printf "%.2f" "$total_waste_monthly"),
-    "total_waste_annual": $(printf "%.2f" "$total_waste_annual"),
-    "invalid_tags": $total_invalid_tags,
-    "excluded_pending_review": $total_excluded_pending
+    "unattached_disks_count": ${disk_count:-0},
+    "unattached_disks_size_gb": ${total_disk_size:-0},
+    "unattached_disks_cost_monthly": $(printf "%.2f" "${total_disk_cost:-0}"),
+    "snapshots_count": ${snapshot_count:-0},
+    "snapshots_size_gb": ${total_snapshot_size:-0},
+    "snapshots_cost_monthly": $(printf "%.2f" "${total_snapshot_cost:-0}"),
+    "total_waste_monthly": $(printf "%.2f" "${total_waste_monthly:-0}"),
+    "total_waste_annual": $(printf "%.2f" "${total_waste_annual:-0}"),
+    "invalid_tags": ${total_invalid_tags:-0},
+    "excluded_pending_review": ${total_excluded_pending:-0}
   },
-  "disk_details": $disk_details_json
+  "disk_details": ${disk_details_json:-[]}
 }
 EOF
 
@@ -1793,6 +1859,8 @@ process_multi_subscription() {
     local resource_group="${4:-}"
     local include_attached="${5:-false}"
     local exclude_list="${6:-}"
+    local skip_tagged="${7:-false}"
+    local skip_cost_validation="${8:-false}"
 
     local execution_start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local execution_start_epoch=$(date +%s)
@@ -1834,7 +1902,7 @@ process_multi_subscription() {
 
         # Collect metrics for this subscription
         local sub_metrics
-        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached"); then
+        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$skip_tagged" "$skip_cost_validation"); then
             success_subscriptions+=("$subscription_id")
             subscription_results+=("$sub_metrics")
 
@@ -1864,15 +1932,7 @@ process_multi_subscription() {
 
             # Add failed subscription to results
             local sub_name=$(get_subscription_name "$subscription_id")
-            subscription_results+=($(cat <<EOF
-{
-  "subscription_id": "$subscription_id",
-  "subscription_name": "$sub_name",
-  "status": "failed",
-  "error": "Failed to collect metrics"
-}
-EOF
-))
+            subscription_results+=("{\"subscription_id\":\"$subscription_id\",\"subscription_name\":\"$sub_name\",\"status\":\"failed\",\"error\":\"Failed to collect metrics\"}")
         fi
 
         # Rate limiting between subscriptions
@@ -1967,16 +2027,16 @@ EOF
 
             # Per-subscription metrics
             for result in "${subscription_results[@]}"; do
-                local sub_id=$(echo "$result" | jq -r '.subscription_id')
-                local sub_name=$(echo "$result" | jq -r '.subscription_name')
-                local sub_status=$(echo "$result" | jq -r '.status')
+                local sub_id=$(echo "$result" | jq -r '.subscription_id // ""' 2>/dev/null || echo "")
+                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
+                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
 
-                if [[ "$sub_status" == "success" ]]; then
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly')
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count')
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count')
-                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0')
-                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0')
+                if [[ "$sub_status" == "success" && -n "$sub_id" ]]; then
+                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
+                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
+                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
+                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
+                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
 
                     echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste"
                     echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks"
@@ -2000,21 +2060,26 @@ EOF
             echo "Total waste: \$$(printf "%.2f" "$total_waste_monthly")/month (\$$(printf "%.2f" "$total_waste_annual")/year)"
             echo ""
             echo "=== PER-SUBSCRIPTION BREAKDOWN ==="
-            printf "%-40s | %-10s | %-10s | %-15s\n" "Subscription" "Disks" "Snapshots" "Monthly Cost"
-            printf "%-40s | %-10s | %-10s | %-15s\n" "----------------------------------------" "----------" "----------" "---------------"
+            printf "%-40s | %10s | %10s | %15s\n" "Subscription" "Disks" "Snapshots" "Monthly Cost"
+            printf "%-40s | %10s | %10s | %15s\n" "----------------------------------------" "----------" "----------" "---------------"
 
             for result in "${subscription_results[@]}"; do
-                local sub_name=$(echo "$result" | jq -r '.subscription_name')
-                local sub_status=$(echo "$result" | jq -r '.status')
+                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
+                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+                
+                # Truncate long subscription names to fit table
+                if [[ ${#sub_name} -gt 40 ]]; then
+                    sub_name="${sub_name:0:37}..."
+                fi
 
                 if [[ "$sub_status" == "success" ]]; then
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count')
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count')
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly')
+                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
+                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
+                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
 
-                    printf "%-40s | %-10d | %-10d | \$%-14.2f\n" "$sub_name" "$sub_disks" "$sub_snapshots" "$sub_waste"
+                    printf "%-40s | %10d | %10d | %15.2f\n" "$sub_name" "$sub_disks" "$sub_snapshots" "$sub_waste"
                 else
-                    printf "%-40s | %-10s | %-10s | %-15s\n" "$sub_name" "FAILED" "-" "-"
+                    printf "%-40s | %10s | %10s | %15s\n" "$sub_name" "FAILED" "-" "-"
                 fi
             done
             ;;
@@ -2456,15 +2521,17 @@ lookup_cost() {
     echo "0.00"  # Default if not found
 }
 
-# Function to sort parallel arrays by size (ascending order)
+# Function to sort parallel arrays by size (ascending), with date as secondary sort
 # Bash 3.2 compatible bubble sort that keeps all arrays in sync
-# Usage: sort_by_size_ascending array1_name array2_name ... size_array_name
-# The last argument must be the array containing numeric sizes to sort by
+# Usage: sort_by_size_ascending array1_name array2_name ... date_array_name size_array_name
+# The last two arguments must be: date_array (for secondary sort) and size_array (for primary sort)
+# When sizes are equal, older items (earlier dates) come first
 # shellcheck disable=SC2154  # dynamic array indirection via eval
 sort_by_size_ascending() {
-    # Get all array names (last one is the size array)
+    # Get all array names (last one is size array, second-to-last is date array)
     local -a array_names=("$@")
     local size_array_name="${array_names[${#array_names[@]}-1]}"
+    local date_array_name="${array_names[${#array_names[@]}-2]}"
 
     # Get array length from size array
     # shellcheck disable=SC2154  # dynamic array name via eval
@@ -2475,14 +2542,29 @@ sort_by_size_ascending() {
         for ((j=0; j<n-i-1; j++)); do
             local k=$((j+1))
 
-            # Get sizes to compare
+            # Get sizes to compare (primary sort key)
             # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_j=\${${size_array_name}[$j]}"
             # shellcheck disable=SC2154  # dynamic arrays via eval
             eval "local size_k=\${${size_array_name}[$k]}"
 
-            # Compare sizes (ascending order)
+            # Get dates to compare (secondary sort key)
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_j=\${${date_array_name}[$j]}"
+            # shellcheck disable=SC2154  # dynamic arrays via eval
+            eval "local date_k=\${${date_array_name}[$k]}"
+
+            local should_swap=false
+
+            # Primary sort: by size (ascending)
             if [[ $size_j -gt $size_k ]]; then
+                should_swap=true
+            # Secondary sort: when sizes equal, sort by date (oldest first)
+            elif [[ $size_j -eq $size_k ]] && [[ "$date_j" > "$date_k" ]]; then
+                should_swap=true
+            fi
+
+            if [[ "$should_swap" == "true" ]]; then
                 # Swap elements in ALL arrays
                 for array_name in "${array_names[@]}"; do
                     eval "local temp=\${${array_name}[$j]}"
@@ -2979,6 +3061,12 @@ analyze_unattached_disks_only() {
     local tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged or show_tagged_only is enabled, use default tag name if not configured
+    if [[ ("$skip_tagged" == "true" || "$show_tagged_only" == "true") && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
@@ -2989,7 +3077,7 @@ analyze_unattached_disks_only() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         tag_filter_stats="$filtered_result"
@@ -3081,8 +3169,8 @@ analyze_unattached_disks_only() {
             echo "Sorting disks by creation date (oldest first)..." >&2
             sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
-            echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
+            echo "Sorting disks by size (then by date)..." >&2
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_createds disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3285,6 +3373,12 @@ generate_unused_resources_report() {
     local disk_tag_filter_stats=""
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged or show_tagged_only is enabled, use default tag name if not configured
+    if [[ ("$skip_tagged" == "true" || "$show_tagged_only" == "true") && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
         local filtered_result
@@ -3295,7 +3389,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_tag_filter_stats="$filtered_result"
@@ -3388,8 +3482,8 @@ generate_unused_resources_report() {
             echo "Sorting disks by creation date (oldest first)..." >&2
             sort_by_created_date disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes disk_createds
         else
-            echo "Sorting disks by size..." >&2
-            sort_by_size_ascending disk_ids disk_names disk_skus disk_createds disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_sizes
+            echo "Sorting disks by size (then by date)..." >&2
+            sort_by_size_ascending disk_ids disk_names disk_skus disk_rgs disk_states disk_tag_statuses disk_tag_dates disk_createds disk_sizes
         fi
 
         # Calculate dynamic column width for Resource Group
@@ -3477,18 +3571,25 @@ generate_unused_resources_report() {
         fi
         echo "" | tee -a "$output_file"
 
-        # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$disk_tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+        # Show filtering summary if any filtering was applied
+        if [[ -n "$disk_tag_filter_stats" ]]; then
+            local excluded_tag_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
             local invalid_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+            local excluded_rg_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_rg // 0' 2>/dev/null || echo "0")
+            local total_raw=$(echo "$disk_tag_filter_stats" | jq -r '.stats.total // 0' 2>/dev/null || echo "0")
 
-            if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
-                echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
-                if [[ $excluded_count -gt 0 ]]; then
-                    echo "  - Excluded $excluded_count resource(s) with pending review (future dates)" | tee -a "$output_file"
+            if [[ $excluded_tag_count -gt 0 || $invalid_count -gt 0 || $excluded_rg_count -gt 0 ]]; then
+                echo "FILTERING SUMMARY:" | tee -a "$output_file"
+                echo "  - Total disks found: $total_raw" | tee -a "$output_file"
+                echo "  - Disks shown (actionable): ${#disk_ids[@]}" | tee -a "$output_file"
+                if [[ $excluded_rg_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_rg_count disk(s) in grace period (new resources in excluded RGs)" | tee -a "$output_file"
+                fi
+                if [[ $excluded_tag_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_tag_count disk(s) with pending review (future dates)" | tee -a "$output_file"
                 fi
                 if [[ $invalid_count -gt 0 ]]; then
-                    echo "  - WARNING: $invalid_count resource(s) have invalid review date tags" | tee -a "$output_file"
+                    echo "  - WARNING: $invalid_count disk(s) have invalid review date tags" | tee -a "$output_file"
                 fi
                 echo "" | tee -a "$output_file"
             fi
@@ -3525,7 +3626,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_tag_filter_stats="$filtered_result"
@@ -3606,8 +3707,8 @@ generate_unused_resources_report() {
             echo "Sorting snapshots by creation date (oldest first)..." >&2
             sort_by_created_date snap_ids snap_names snap_skus snap_tag_statuses snap_tag_dates snap_sizes snap_createds
         else
-            echo "Sorting snapshots by size..." >&2
-            sort_by_size_ascending snap_ids snap_names snap_skus snap_createds snap_tag_statuses snap_tag_dates snap_sizes
+            echo "Sorting snapshots by size (then by date)..." >&2
+            sort_by_size_ascending snap_ids snap_names snap_skus snap_tag_statuses snap_tag_dates snap_createds snap_sizes
         fi
 
         # STEP 3: Loop through snapshots and print results using cost map (no API calls!)
@@ -3665,15 +3766,22 @@ generate_unused_resources_report() {
             "TOTAL SNAPSHOTS" "$total_snapshot_size GB" "" "" "$total_snapshot_cost" | tee -a "$output_file"
         echo "" | tee -a "$output_file"
 
-        # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$snapshot_tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+        # Show filtering summary if any filtering was applied
+        if [[ -n "$snapshot_tag_filter_stats" ]]; then
+            local excluded_tag_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
             local invalid_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+            local excluded_rg_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_rg // 0' 2>/dev/null || echo "0")
+            local total_raw=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.total // 0' 2>/dev/null || echo "0")
 
-            if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
-                echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
-                if [[ $excluded_count -gt 0 ]]; then
-                    echo "  - Excluded $excluded_count snapshot(s) with pending review (future dates)" | tee -a "$output_file"
+            if [[ $excluded_tag_count -gt 0 || $invalid_count -gt 0 || $excluded_rg_count -gt 0 ]]; then
+                echo "FILTERING SUMMARY:" | tee -a "$output_file"
+                echo "  - Total snapshots found: $total_raw" | tee -a "$output_file"
+                echo "  - Snapshots shown (actionable): ${#snap_ids[@]}" | tee -a "$output_file"
+                if [[ $excluded_rg_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_rg_count snapshot(s) in grace period (new resources in excluded RGs)" | tee -a "$output_file"
+                fi
+                if [[ $excluded_tag_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_tag_count snapshot(s) with pending review (future dates)" | tee -a "$output_file"
                 fi
                 if [[ $invalid_count -gt 0 ]]; then
                     echo "  - WARNING: $invalid_count snapshot(s) have invalid review date tags" | tee -a "$output_file"
@@ -3951,6 +4059,7 @@ main() {
     # Tag-based exclusion variables
     local skip_tagged="false"       # Skip resources with valid future review dates
     local show_tagged_only="false"  # Show only resources with tags (for reporting)
+    local skip_cost_validation="false"  # Skip Cost Management permission check
 
     # Phase 2: Zabbix integration variables
     local zabbix_send=false       # Enable automatic sending to Zabbix
@@ -4270,6 +4379,10 @@ main() {
                 skip_tagged="true"
                 shift
                 ;;
+            --skip-cost-validation)
+                skip_cost_validation="true"
+                shift
+                ;;
             --show-tagged-only)
                 show_tagged_only="true"
                 shift
@@ -4282,7 +4395,7 @@ main() {
                 resource_group="$2"
                 shift 2
                 ;;
-            --exclude-resource-groups)
+            --exclude-resource-groups|--exclude-rgs)
                 if [[ -z "${2:-}" ]]; then
                     echo "Error: --exclude-resource-groups requires comma-separated resource group names"
                     usage
@@ -4321,10 +4434,15 @@ main() {
     # Validate resource group filtering configuration
     if [[ -n "$resource_group" && -n "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" ]]; then
         # Check if the include RG is also in the exclude list
+        # Use tr for bash 3.2 compatibility (macOS /bin/bash)
+        local rg_lower
+        rg_lower=$(echo "$resource_group" | tr '[:upper:]' '[:lower:]')
         IFS=',' read -ra EXCLUDE_ARRAY <<< "${CONFIG_EXCLUDE_RESOURCE_GROUPS}"
         for excluded_rg in "${EXCLUDE_ARRAY[@]}"; do
             excluded_rg=$(echo "$excluded_rg" | xargs)
-            if [[ -n "$excluded_rg" && "${resource_group,,}" == "${excluded_rg,,}" ]]; then
+            local excluded_rg_lower
+            excluded_rg_lower=$(echo "$excluded_rg" | tr '[:upper:]' '[:lower:]')
+            if [[ -n "$excluded_rg" && "$rg_lower" == "$excluded_rg_lower" ]]; then
                 echo "Error: Resource group '$resource_group' appears in both include (--resource-group) and exclude (--exclude-resource-groups) lists"
                 echo "This configuration conflict is not allowed. Please specify the resource group in only one list."
                 exit $EXIT_CONFIG_ERROR
@@ -4390,7 +4508,7 @@ main() {
 
         # Validate permissions for single subscription
         log_progress "Validating Azure permissions..."
-        if ! validate_azure_permissions "$subscription_id"; then
+        if ! validate_azure_permissions "$subscription_id" "$skip_cost_validation"; then
             echo "Error: Insufficient permissions on subscription: $subscription_id"
             exit $EXIT_CONFIG_ERROR
         fi
@@ -4464,7 +4582,7 @@ main() {
                 # Multi-subscription analysis
                 local report_output
                 local exit_code
-                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions")
+                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions" "$skip_tagged" "$skip_cost_validation")
                 exit_code=$?
 
                 # Output the report

@@ -132,14 +132,19 @@ The existing script (`azure-storage-cost-analyzer.sh`) is designed for **interac
 - Resource group filtering
 - Include/exclude attached disks
 
-❌ **Not Implemented:**
-- Machine-readable output formats
+✅ **Now Implemented (as of Nov 2025):**
+- Machine-readable output formats (JSON via `--output-format json`)
+- Zabbix integration (`--zabbix-send`, templates in `templates/`)
+- Multi-subscription support (`--subscriptions all`)
+- Configuration files (`azure-storage-monitor.conf`)
+- Automatic date range calculation (`--days N`, `--last-month`)
+- Threshold-based alerting (Zabbix triggers)
+- Tag-based exclusion (`--skip-tagged`)
+- Resource Group exclusion (`--exclude-rgs`)
+- macOS compatibility (bash 3.2+)
+
+❌ **Not Yet Implemented:**
 - Silent/quiet execution mode
-- Zabbix integration
-- Multi-subscription support
-- Configuration files
-- Automatic date range calculation
-- Threshold-based alerting
 - Structured logging
 
 ### Current Output Format

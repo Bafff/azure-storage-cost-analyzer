@@ -97,22 +97,22 @@ exclude_resource_groups =
 
 # Age threshold in days - resources older than this will be included even
 # if they're in an excluded resource group (anomaly detection)
-# Default: 30 days
-exclude_rg_age_threshold_days = 30
+# Default: 60 days
+exclude_rg_age_threshold_days = 60
 
 # Use Case Example:
 # Databricks creates/deletes disks regularly as part of normal operations.
 # These ephemeral disks are typically short-lived (hours/days).
-# However, if a Databricks disk is > 30 days old, it's likely orphaned/stuck
+# However, if a Databricks disk is > 60 days old, it's likely orphaned/stuck
 # and needs attention, so it will still be included in alerts.
 #
 # Example configuration for Databricks:
 #   exclude_resource_groups = databricks-managed-rg,databricks-compute-rg
-#   exclude_rg_age_threshold_days = 30
+#   exclude_rg_age_threshold_days = 60
 #
 # Result:
-#   - Databricks disks < 30 days old: EXCLUDED from alerts (normal operation)
-#   - Databricks disks >= 30 days old: INCLUDED in alerts (potential issue)
+#   - Databricks disks < 60 days old: EXCLUDED from alerts (normal operation)
+#   - Databricks disks >= 60 days old: INCLUDED in alerts (potential issue)
 #   - All other RG resources: INCLUDED normally
 
 # ============================================================================
