@@ -986,11 +986,25 @@ calculate_resource_age_days() {
     # Parse ISO 8601 timestamp to epoch seconds
     # Azure format: "2024-10-15T10:30:45.1234567Z" or "2024-10-15T10:30:45Z"
     local created_epoch
-    if ! created_epoch=$(date -d "$time_created" +%s 2>/dev/null); then
-        # Fallback: try removing fractional seconds if present
-        local time_created_simplified
-        time_created_simplified=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/')
-        if ! created_epoch=$(date -d "$time_created_simplified" +%s 2>/dev/null); then
+    
+    # Remove fractional seconds and trailing Z for consistent parsing
+    local time_created_clean
+    time_created_clean=$(echo "$time_created" | sed 's/\.[0-9]*Z$/Z/' | sed 's/Z$//')
+    
+    # Try GNU date first (Linux)
+    if created_epoch=$(date -d "$time_created" +%s 2>/dev/null); then
+        : # Success with GNU date
+    elif created_epoch=$(date -d "${time_created_clean}" +%s 2>/dev/null); then
+        : # Success with GNU date (cleaned timestamp)
+    # Try macOS/BSD date
+    elif created_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$time_created_clean" +%s 2>/dev/null); then
+        : # Success with BSD date
+    else
+        # Last resort: try Python if available
+        if command -v python3 &>/dev/null; then
+            created_epoch=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('${time_created_clean}'.replace('Z','+00:00')).timestamp()))" 2>/dev/null)
+        fi
+        if [[ -z "$created_epoch" ]]; then
             echo "-1"
             return 1
         fi
