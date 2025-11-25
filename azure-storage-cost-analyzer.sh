@@ -153,8 +153,10 @@ check_dependencies() {
 # Function to validate Azure permissions for a subscription
 # Args: subscription_id
 # Returns: 0 if permissions are valid, 1 otherwise
+# Args: subscription_id [skip_cost_validation]
 validate_azure_permissions() {
     local subscription_id="$1"
+    local skip_cost_validation="${2:-false}"
     local current_user
     local has_reader_role=false
     local has_cost_access=false
@@ -186,38 +188,43 @@ validate_azure_permissions() {
 
     # Validate Cost Management access by attempting a simple cost query via REST API
     # Note: az costmanagement query was removed in extension v0.2.1
-    log_verbose "Validating Cost Management access..."
-    local yesterday today cost_query_result
-    yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
-    today=$(date -u '+%Y-%m-%d')
+    if [[ "$skip_cost_validation" == "true" ]]; then
+        log_verbose "⚠ Skipping Cost Management validation (--skip-cost-validation flag)"
+        has_cost_access=true
+    else
+        log_verbose "Validating Cost Management access..."
+        local yesterday today cost_query_result
+        yesterday=$(date -u -d "yesterday" '+%Y-%m-%d' 2>/dev/null || date -u -v-1d '+%Y-%m-%d' 2>/dev/null)
+        today=$(date -u '+%Y-%m-%d')
 
-    if cost_query_result=$(az_with_timeout rest --method POST \
-        --url "https://management.azure.com/subscriptions/$subscription_id/providers/Microsoft.CostManagement/query?api-version=2023-03-01" \
-        --body "{
-            \"type\": \"ActualCost\",
-            \"timeframe\": \"Custom\",
-            \"timePeriod\": {
-                \"from\": \"$yesterday\",
-                \"to\": \"$today\"
-            },
-            \"dataset\": {
-                \"granularity\": \"None\",
-                \"aggregation\": {
-                    \"totalCost\": {
-                        \"name\": \"Cost\",
-                        \"function\": \"Sum\"
+        if cost_query_result=$(az_with_timeout rest --method POST \
+            --url "https://management.azure.com/subscriptions/$subscription_id/providers/Microsoft.CostManagement/query?api-version=2023-03-01" \
+            --body "{
+                \"type\": \"ActualCost\",
+                \"timeframe\": \"Custom\",
+                \"timePeriod\": {
+                    \"from\": \"$yesterday\",
+                    \"to\": \"$today\"
+                },
+                \"dataset\": {
+                    \"granularity\": \"None\",
+                    \"aggregation\": {
+                        \"totalCost\": {
+                            \"name\": \"Cost\",
+                            \"function\": \"Sum\"
+                        }
                     }
                 }
-            }
-        }" 2>/dev/null); then
-        has_cost_access=true
-        log_verbose "✓ Cost Management access validated"
-    else
-        log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
-        log_progress "Required: Cost Management Reader role or equivalent permissions"
-        log_progress "Hint: Grant 'Cost Management Reader' role with:"
-        log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
-        return 1
+            }" 2>/dev/null); then
+            has_cost_access=true
+            log_verbose "✓ Cost Management access validated"
+        else
+            log_progress "ERROR: User '$current_user' does not have Cost Management access on subscription '$subscription_id'"
+            log_progress "Required: Cost Management Reader role or equivalent permissions"
+            log_progress "Hint: Grant 'Cost Management Reader' role with:"
+            log_progress "  az role assignment create --assignee '$current_user' --role 'Cost Management Reader' --scope '/subscriptions/$subscription_id'"
+            return 1
+        fi
     fi
 
     log_verbose "✓ All required permissions validated for subscription: $subscription_id"
@@ -1570,6 +1577,7 @@ collect_subscription_metrics() {
     local resource_group="${4:-}"
     local include_attached="${5:-false}"
     local skip_tagged="${6:-false}"
+    local skip_cost_validation="${7:-false}"
 
     log_verbose "Collecting metrics for subscription: $subscription_id"
 
@@ -1580,7 +1588,7 @@ collect_subscription_metrics() {
     }
 
     # Validate permissions for this subscription
-    if ! validate_azure_permissions "$subscription_id"; then
+    if ! validate_azure_permissions "$subscription_id" "$skip_cost_validation"; then
         log_progress "ERROR: Insufficient permissions on subscription: $subscription_id"
         return 1
     fi
@@ -1810,6 +1818,7 @@ process_multi_subscription() {
     local include_attached="${5:-false}"
     local exclude_list="${6:-}"
     local skip_tagged="${7:-false}"
+    local skip_cost_validation="${8:-false}"
 
     local execution_start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local execution_start_epoch=$(date +%s)
@@ -1851,7 +1860,7 @@ process_multi_subscription() {
 
         # Collect metrics for this subscription
         local sub_metrics
-        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$skip_tagged"); then
+        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$skip_tagged" "$skip_cost_validation"); then
             success_subscriptions+=("$subscription_id")
             subscription_results+=("$sub_metrics")
 
@@ -3989,6 +3998,7 @@ main() {
     # Tag-based exclusion variables
     local skip_tagged="false"       # Skip resources with valid future review dates
     local show_tagged_only="false"  # Show only resources with tags (for reporting)
+    local skip_cost_validation="false"  # Skip Cost Management permission check
 
     # Phase 2: Zabbix integration variables
     local zabbix_send=false       # Enable automatic sending to Zabbix
@@ -4308,6 +4318,10 @@ main() {
                 skip_tagged="true"
                 shift
                 ;;
+            --skip-cost-validation)
+                skip_cost_validation="true"
+                shift
+                ;;
             --show-tagged-only)
                 show_tagged_only="true"
                 shift
@@ -4428,7 +4442,7 @@ main() {
 
         # Validate permissions for single subscription
         log_progress "Validating Azure permissions..."
-        if ! validate_azure_permissions "$subscription_id"; then
+        if ! validate_azure_permissions "$subscription_id" "$skip_cost_validation"; then
             echo "Error: Insufficient permissions on subscription: $subscription_id"
             exit $EXIT_CONFIG_ERROR
         fi
@@ -4502,7 +4516,7 @@ main() {
                 # Multi-subscription analysis
                 local report_output
                 local exit_code
-                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions" "$skip_tagged")
+                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions" "$skip_tagged" "$skip_cost_validation")
                 exit_code=$?
 
                 # Output the report
