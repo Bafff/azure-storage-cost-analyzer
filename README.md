@@ -49,7 +49,7 @@ chmod +x azure-storage-cost-analyzer.sh
 | `--skip-tagged` | Exclude resources with future `Resource-Next-Review-Date` tags |
 | `--exclude-rgs "rg1,rg2"` | Exclude resource groups (resources <60 days old) |
 | `--exclude-rg-age-threshold-days N` | Override default 60-day threshold |
-| `--skip-cost-validation` | Skip Cost Management permission check |
+| `--validate-costs` | Enable Cost Management permission check (disabled by default) |
 | `--sort-by-date` | Sort output by creation date instead of size |
 | `--output-format <json\|text>` | Output format (default: text) |
 

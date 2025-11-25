@@ -4059,7 +4059,7 @@ main() {
     # Tag-based exclusion variables
     local skip_tagged="false"       # Skip resources with valid future review dates
     local show_tagged_only="false"  # Show only resources with tags (for reporting)
-    local skip_cost_validation="false"  # Skip Cost Management permission check
+    local skip_cost_validation="true"   # Skip Cost Management permission check (default: true)
 
     # Phase 2: Zabbix integration variables
     local zabbix_send=false       # Enable automatic sending to Zabbix
@@ -4380,7 +4380,13 @@ main() {
                 shift
                 ;;
             --skip-cost-validation)
+                # Now default behavior, kept for backwards compatibility
                 skip_cost_validation="true"
+                shift
+                ;;
+            --validate-costs)
+                # Enable Cost Management permission validation
+                skip_cost_validation="false"
                 shift
                 ;;
             --show-tagged-only)

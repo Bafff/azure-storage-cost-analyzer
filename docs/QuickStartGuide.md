@@ -45,13 +45,13 @@ Use when snapshot counts are reasonable (<50); large snapshot sets will take lon
 Resources in excluded RGs younger than 60 days are excluded from alerts.
 Resources older than 60 days are included as potential anomalies.
 
-## Skip Cost Management Validation
+## Enable Cost Management Validation
 ```bash
-# Useful when Cost Management permissions vary across subscriptions
+# By default, Cost Management validation is skipped. Enable it when needed:
 ./azure-storage-cost-analyzer.sh unused-report \
   --subscriptions all \
   --days 30 \
-  --skip-cost-validation
+  --validate-costs
 ```
 
 ## Notes
