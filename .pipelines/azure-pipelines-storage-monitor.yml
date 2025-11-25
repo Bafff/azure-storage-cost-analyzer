@@ -84,15 +84,15 @@ stages:
               scriptType: 'bash'
               scriptLocation: 'scriptPath'
               scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
-              arguments: |
-                unused-report \
-                --subscriptions all \
-                --days $(SCAN_DAYS) \
-                --output-format json \
-                --zabbix-send \
-                --zabbix-server $(ZABBIX_SERVER) \
-                --zabbix-host $(ZABBIX_HOST) \
-                --zabbix-port 10051 \
+              arguments: >-
+                unused-report
+                --subscriptions all
+                --days $(SCAN_DAYS)
+                --output-format json
+                --zabbix-send
+                --zabbix-server $(ZABBIX_SERVER)
+                --zabbix-host $(ZABBIX_HOST)
+                --zabbix-port 10051
                 --quiet
               workingDirectory: '$(Build.SourcesDirectory)'
               failOnStandardError: true
