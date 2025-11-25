@@ -2018,19 +2018,19 @@ EOF
             ;;
 
         zabbix)
-            # Output Zabbix metrics (batch format)
+            # Output Zabbix metrics (batch format without timestamps)
             local timestamp=$(date +%s)
             local zabbix_host="${CONFIG_ZABBIX_HOSTNAME:-azure-storage-monitor}"
 
-            echo "$zabbix_host azure.storage.all.total_waste.monthly $timestamp $(printf "%.2f" "$total_waste_monthly")"
-            echo "$zabbix_host azure.storage.all.total_disks $timestamp $total_disk_count"
-            echo "$zabbix_host azure.storage.all.total_snapshots $timestamp $total_snapshot_count"
-            echo "$zabbix_host azure.storage.all.subscriptions_scanned $timestamp ${#subscription_ids[@]}"
-            echo "$zabbix_host azure.storage.all.invalid_tags $timestamp $total_invalid_tags"
-            echo "$zabbix_host azure.storage.all.excluded_pending_review $timestamp $total_excluded_pending"
-            echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp $timestamp"
-            echo "$zabbix_host azure.storage.script.execution_time_seconds $timestamp $execution_duration"
-            echo "$zabbix_host azure.storage.script.last_run_status $timestamp 0"
+            echo "$zabbix_host azure.storage.all.total_waste.monthly $(printf "%.2f" "$total_waste_monthly")"
+            echo "$zabbix_host azure.storage.all.total_disks $total_disk_count"
+            echo "$zabbix_host azure.storage.all.total_snapshots $total_snapshot_count"
+            echo "$zabbix_host azure.storage.all.subscriptions_scanned ${#subscription_ids[@]}"
+            echo "$zabbix_host azure.storage.all.invalid_tags $total_invalid_tags"
+            echo "$zabbix_host azure.storage.all.excluded_pending_review $total_excluded_pending"
+            echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp"
+            echo "$zabbix_host azure.storage.script.execution_time_seconds $execution_duration"
+            echo "$zabbix_host azure.storage.script.last_run_status 0"
 
             # Per-subscription metrics
             for result in "${subscription_results[@]}"; do
@@ -2045,11 +2045,11 @@ EOF
                     local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
                     local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
 
-                    echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste"
-                    echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks"
-                    echo "$zabbix_host azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots"
-                    echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $timestamp $sub_invalid_tags"
-                    echo "$zabbix_host azure.storage.subscription.excluded_pending_review[$sub_id] $timestamp $sub_excluded_pending"
+                    echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $sub_waste"
+                    echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $sub_disks"
+                    echo "$zabbix_host azure.storage.subscription.snapshot_count[$sub_id] $sub_snapshots"
+                    echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $sub_invalid_tags"
+                    echo "$zabbix_host azure.storage.subscription.excluded_pending_review[$sub_id] $sub_excluded_pending"
                 fi
             done
             ;;
@@ -2214,25 +2214,25 @@ create_zabbix_batch_file() {
     > "$batch_file"
 
     # Extract metrics from JSON and format for Zabbix
-    # Format: hostname key timestamp value
+    # Format: hostname key value (no timestamps - Zabbix uses current time)
 
     # Aggregated metrics
     local total_waste=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_waste_monthly_usd // .metrics.total_waste_monthly // 0')
     local total_disks=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_unattached_disks // .metrics.unattached_disks_count // 0')
     local total_snapshots=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_snapshots // .metrics.snapshots_count // 0')
 
-    echo "$hostname azure.storage.all.total_waste.monthly $timestamp $total_waste" >> "$batch_file"
-    echo "$hostname azure.storage.all.total_disks $timestamp $total_disks" >> "$batch_file"
-    echo "$hostname azure.storage.all.total_snapshots $timestamp $total_snapshots" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_waste.monthly $total_waste" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_disks $total_disks" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_snapshots $total_snapshots" >> "$batch_file"
 
     # Script health metrics
-    echo "$hostname azure.storage.script.last_run_timestamp $timestamp $timestamp" >> "$batch_file"
-    echo "$hostname azure.storage.script.last_run_status $timestamp 0" >> "$batch_file"
+    echo "$hostname azure.storage.script.last_run_timestamp $timestamp" >> "$batch_file"
+    echo "$hostname azure.storage.script.last_run_status 0" >> "$batch_file"
 
     # Per-subscription metrics (if available)
     if echo "$metrics_json" | jq -e '.by_subscription' > /dev/null 2>&1; then
         local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length')
-        echo "$hostname azure.storage.all.subscriptions_scanned $timestamp $sub_count" >> "$batch_file"
+        echo "$hostname azure.storage.all.subscriptions_scanned $sub_count" >> "$batch_file"
 
         # Iterate through subscriptions
         for ((i=0; i<sub_count; i++)); do
@@ -2244,9 +2244,9 @@ create_zabbix_batch_file() {
                 local sub_disks=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.unattached_disks_count")
                 local sub_snapshots=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.snapshots_count")
 
-                echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $sub_waste" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.disk_count[$sub_id] $sub_disks" >> "$batch_file"
+                echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $sub_snapshots" >> "$batch_file"
 
                 # Send disk details (TEXT item)
                 local disk_details_json=$(echo "$metrics_json" | jq -r ".by_subscription[$i].disk_details // []")
@@ -2254,9 +2254,9 @@ create_zabbix_batch_file() {
                     local disk_details_text=$(format_disk_details_text "$disk_details_json" 10)
                     # Escape newlines for Zabbix sender (replace with literal \n)
                     disk_details_text=$(echo "$disk_details_text" | sed ':a;N;$!ba;s/\n/\\n/g')
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"$disk_details_text\"" >> "$batch_file"
+                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] \"$disk_details_text\"" >> "$batch_file"
                 else
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"No unattached disks\"" >> "$batch_file"
+                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] \"No unattached disks\"" >> "$batch_file"
                 fi
             fi
         done
@@ -2285,10 +2285,9 @@ send_batch_to_zabbix() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix server $server:$port..."
 
-    # Send all metrics in one batch (-T enables timestamp in input file)
+    # Send all metrics in one batch
     if zabbix_sender -z "$server" \
                      -p "$port" \
-                     -T \
                      -i "$batch_file" \
                      -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
         log_progress "Successfully sent all metrics to Zabbix"
@@ -2328,9 +2327,8 @@ send_batch_to_zabbix_with_config() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix using config: $config_file..."
 
-    # Send using config file (-T enables timestamp in input file)
+    # Send using config file
     if zabbix_sender -c "$config_file" \
-                     -T \
                      -i "$batch_file" \
                      -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
         log_progress "Successfully sent all metrics to Zabbix"
