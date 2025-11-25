@@ -4339,7 +4339,7 @@ main() {
                 resource_group="$2"
                 shift 2
                 ;;
-            --exclude-resource-groups)
+            --exclude-resource-groups|--exclude-rgs)
                 if [[ -z "${2:-}" ]]; then
                     echo "Error: --exclude-resource-groups requires comma-separated resource group names"
                     usage
