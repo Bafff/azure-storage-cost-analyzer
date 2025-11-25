@@ -1569,6 +1569,7 @@ collect_subscription_metrics() {
     local end_date="$3"
     local resource_group="${4:-}"
     local include_attached="${5:-false}"
+    local skip_tagged="${6:-false}"
 
     log_verbose "Collecting metrics for subscription: $subscription_id"
 
@@ -1598,10 +1599,21 @@ collect_subscription_metrics() {
     local disk_invalid_tags=0
     local disk_excluded_pending=0
 
-    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config or via CLI)
     local unattached_disks_json
     local tag_name="${CONFIG_REVIEW_DATE_TAG_NAME:-}"
     local exclude_rgs="${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}"
+    
+    # If skip_tagged is enabled via CLI, use default tag name if not configured
+    if [[ "$skip_tagged" == "true" && -z "$tag_name" ]]; then
+        tag_name="Resource-Next-Review-Date"
+    fi
+    
+    # Determine effective skip_tagged value (CLI flag OR config)
+    local effective_skip_tagged="$skip_tagged"
+    if [[ "$effective_skip_tagged" != "true" && "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" == "true" ]]; then
+        effective_skip_tagged="true"
+    fi
 
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$unattached_disks_raw" ]]; then
@@ -1610,7 +1622,7 @@ collect_subscription_metrics() {
             "$unattached_disks_raw" \
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
-            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
@@ -1680,7 +1692,7 @@ collect_subscription_metrics() {
     local snapshot_invalid_tags=0
     local snapshot_excluded_pending=0
 
-    # Apply tag filtering and/or RG exclusion filtering (if enabled in config)
+    # Apply tag filtering and/or RG exclusion filtering (if enabled in config or via CLI)
     local snapshots_json
     # Call filter_resources_by_tags if either tag filtering OR RG exclusion is enabled
     if [[ (-n "$tag_name" || -n "$exclude_rgs") && -n "$snapshots_raw" ]]; then
@@ -1689,7 +1701,7 @@ collect_subscription_metrics() {
             "$snapshots_raw" \
             "$tag_name" \
             "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
-            "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+            "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
             "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-30}" 2>/dev/null)
@@ -1797,6 +1809,7 @@ process_multi_subscription() {
     local resource_group="${4:-}"
     local include_attached="${5:-false}"
     local exclude_list="${6:-}"
+    local skip_tagged="${7:-false}"
 
     local execution_start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     local execution_start_epoch=$(date +%s)
@@ -1838,7 +1851,7 @@ process_multi_subscription() {
 
         # Collect metrics for this subscription
         local sub_metrics
-        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached"); then
+        if sub_metrics=$(collect_subscription_metrics "$subscription_id" "$start_date" "$end_date" "$resource_group" "$include_attached" "$skip_tagged"); then
             success_subscriptions+=("$subscription_id")
             subscription_results+=("$sub_metrics")
 
@@ -1868,15 +1881,7 @@ process_multi_subscription() {
 
             # Add failed subscription to results
             local sub_name=$(get_subscription_name "$subscription_id")
-            subscription_results+=($(cat <<EOF
-{
-  "subscription_id": "$subscription_id",
-  "subscription_name": "$sub_name",
-  "status": "failed",
-  "error": "Failed to collect metrics"
-}
-EOF
-))
+            subscription_results+=("{\"subscription_id\":\"$subscription_id\",\"subscription_name\":\"$sub_name\",\"status\":\"failed\",\"error\":\"Failed to collect metrics\"}")
         fi
 
         # Rate limiting between subscriptions
@@ -4497,7 +4502,7 @@ main() {
                 # Multi-subscription analysis
                 local report_output
                 local exit_code
-                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions")
+                report_output=$(process_multi_subscription "$subscriptions_input" "$start_date" "$end_date" "$resource_group" "$include_attached" "$exclude_subscriptions" "$skip_tagged")
                 exit_code=$?
 
                 # Output the report
