@@ -3571,18 +3571,25 @@ generate_unused_resources_report() {
         fi
         echo "" | tee -a "$output_file"
 
-        # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$disk_tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+        # Show filtering summary if any filtering was applied
+        if [[ -n "$disk_tag_filter_stats" ]]; then
+            local excluded_tag_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
             local invalid_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+            local excluded_rg_count=$(echo "$disk_tag_filter_stats" | jq -r '.stats.excluded_rg // 0' 2>/dev/null || echo "0")
+            local total_raw=$(echo "$disk_tag_filter_stats" | jq -r '.stats.total // 0' 2>/dev/null || echo "0")
 
-            if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
-                echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
-                if [[ $excluded_count -gt 0 ]]; then
-                    echo "  - Excluded $excluded_count resource(s) with pending review (future dates)" | tee -a "$output_file"
+            if [[ $excluded_tag_count -gt 0 || $invalid_count -gt 0 || $excluded_rg_count -gt 0 ]]; then
+                echo "FILTERING SUMMARY:" | tee -a "$output_file"
+                echo "  - Total disks found: $total_raw" | tee -a "$output_file"
+                echo "  - Disks shown (actionable): ${#disk_ids[@]}" | tee -a "$output_file"
+                if [[ $excluded_rg_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_rg_count disk(s) in grace period (new resources in excluded RGs)" | tee -a "$output_file"
+                fi
+                if [[ $excluded_tag_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_tag_count disk(s) with pending review (future dates)" | tee -a "$output_file"
                 fi
                 if [[ $invalid_count -gt 0 ]]; then
-                    echo "  - WARNING: $invalid_count resource(s) have invalid review date tags" | tee -a "$output_file"
+                    echo "  - WARNING: $invalid_count disk(s) have invalid review date tags" | tee -a "$output_file"
                 fi
                 echo "" | tee -a "$output_file"
             fi
@@ -3759,15 +3766,22 @@ generate_unused_resources_report() {
             "TOTAL SNAPSHOTS" "$total_snapshot_size GB" "" "" "$total_snapshot_cost" | tee -a "$output_file"
         echo "" | tee -a "$output_file"
 
-        # Show tag filtering summary if enabled
-        if [[ -n "$tag_name" && -n "$snapshot_tag_filter_stats" ]]; then
-            local excluded_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
+        # Show filtering summary if any filtering was applied
+        if [[ -n "$snapshot_tag_filter_stats" ]]; then
+            local excluded_tag_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_pending // 0' 2>/dev/null || echo "0")
             local invalid_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.invalid_tags // 0' 2>/dev/null || echo "0")
+            local excluded_rg_count=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.excluded_rg // 0' 2>/dev/null || echo "0")
+            local total_raw=$(echo "$snapshot_tag_filter_stats" | jq -r '.stats.total // 0' 2>/dev/null || echo "0")
 
-            if [[ $excluded_count -gt 0 || $invalid_count -gt 0 ]]; then
-                echo "TAG FILTERING SUMMARY:" | tee -a "$output_file"
-                if [[ $excluded_count -gt 0 ]]; then
-                    echo "  - Excluded $excluded_count snapshot(s) with pending review (future dates)" | tee -a "$output_file"
+            if [[ $excluded_tag_count -gt 0 || $invalid_count -gt 0 || $excluded_rg_count -gt 0 ]]; then
+                echo "FILTERING SUMMARY:" | tee -a "$output_file"
+                echo "  - Total snapshots found: $total_raw" | tee -a "$output_file"
+                echo "  - Snapshots shown (actionable): ${#snap_ids[@]}" | tee -a "$output_file"
+                if [[ $excluded_rg_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_rg_count snapshot(s) in grace period (new resources in excluded RGs)" | tee -a "$output_file"
+                fi
+                if [[ $excluded_tag_count -gt 0 ]]; then
+                    echo "  - Excluded $excluded_tag_count snapshot(s) with pending review (future dates)" | tee -a "$output_file"
                 fi
                 if [[ $invalid_count -gt 0 ]]; then
                     echo "  - WARNING: $invalid_count snapshot(s) have invalid review date tags" | tee -a "$output_file"
