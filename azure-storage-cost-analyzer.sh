@@ -2018,21 +2018,26 @@ EOF
             echo "Total waste: \$$(printf "%.2f" "$total_waste_monthly")/month (\$$(printf "%.2f" "$total_waste_annual")/year)"
             echo ""
             echo "=== PER-SUBSCRIPTION BREAKDOWN ==="
-            printf "%-40s | %-10s | %-10s | %-15s\n" "Subscription" "Disks" "Snapshots" "Monthly Cost"
-            printf "%-40s | %-10s | %-10s | %-15s\n" "----------------------------------------" "----------" "----------" "---------------"
+            printf "%-40s | %10s | %10s | %15s\n" "Subscription" "Disks" "Snapshots" "Monthly Cost"
+            printf "%-40s | %10s | %10s | %15s\n" "----------------------------------------" "----------" "----------" "---------------"
 
             for result in "${subscription_results[@]}"; do
                 local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
                 local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+                
+                # Truncate long subscription names to fit table
+                if [[ ${#sub_name} -gt 40 ]]; then
+                    sub_name="${sub_name:0:37}..."
+                fi
 
                 if [[ "$sub_status" == "success" ]]; then
                     local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
                     local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
                     local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
 
-                    printf "%-40s | %-10d | %-10d | \$%-14.2f\n" "$sub_name" "$sub_disks" "$sub_snapshots" "$sub_waste"
+                    printf "%-40s | %10d | %10d | %15.2f\n" "$sub_name" "$sub_disks" "$sub_snapshots" "$sub_waste"
                 else
-                    printf "%-40s | %-10s | %-10s | %-15s\n" "$sub_name" "FAILED" "-" "-"
+                    printf "%-40s | %10s | %10s | %15s\n" "$sub_name" "FAILED" "-" "-"
                 fi
             done
             ;;
