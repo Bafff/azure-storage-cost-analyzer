@@ -339,8 +339,11 @@ calculate_date_range() {
             END_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             # Start date: N days ago
-            if command -v gdate &>/dev/null; then
-                # GNU date (Linux, or brew install coreutils on Mac)
+            if date -d "1 day ago" &>/dev/null 2>&1; then
+                # GNU date (Linux)
+                START_DATE="$(date -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
+            elif command -v gdate &>/dev/null; then
+                # GNU date via coreutils (macOS with homebrew)
                 START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
             elif date -v-1d &>/dev/null 2>&1; then
                 # BSD date (macOS default)
@@ -353,8 +356,12 @@ calculate_date_range() {
 
         last-month)
             # Previous full month (1st to last day)
-            if command -v gdate &>/dev/null; then
-                # GNU date
+            if date -d "1 day ago" &>/dev/null 2>&1; then
+                # GNU date (Linux)
+                START_DATE="$(date -u -d 'last month' +"%Y-%m-01T00:00:00Z")"
+                END_DATE="$(date -u -d "$(date -d 'last month' +%Y-%m-01) +1 month -1 day" +"%Y-%m-%dT23:59:59Z")"
+            elif command -v gdate &>/dev/null; then
+                # GNU date via coreutils (macOS with homebrew)
                 START_DATE="$(gdate -u -d 'last month' +"%Y-%m-01T00:00:00Z")"
                 END_DATE="$(gdate -u -d "$(gdate -d 'last month' +%Y-%m-01) +1 month -1 day" +"%Y-%m-%dT23:59:59Z")"
             elif date -v-1d &>/dev/null 2>&1; then
