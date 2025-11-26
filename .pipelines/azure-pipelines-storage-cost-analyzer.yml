@@ -30,13 +30,15 @@ pool:
     - Agent.OS -equals Linux
 
 variables:
-  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
+  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER, optionally EXCLUDE_RESOURCE_GROUPS
   - name: ZABBIX_HOST
     value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30  # Analyze last 30 days
   - name: AZURE_SERVICE_CONNECTION
     value: 'zabbix'
+  - name: EXCLUDE_RESOURCE_GROUPS
+    value: ''  # Default empty, override in variable group
 
 stages:
   - stage: Analyze
@@ -98,6 +100,8 @@ stages:
                 --zabbix-host $(ZABBIX_HOST)
                 --zabbix-port 10051
                 --quiet
+                ${{ if ne(variables['EXCLUDE_RESOURCE_GROUPS'], '') }}:
+                  --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)
               workingDirectory: '$(Build.SourcesDirectory)'
               failOnStandardError: false
             env:
