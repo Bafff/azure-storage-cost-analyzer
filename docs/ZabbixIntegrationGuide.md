@@ -214,6 +214,81 @@ triggers:
 - Cannot dynamically link to `history.php?itemids[]=XXX` for a different item
 - Use Latest Data filtering by item name as the workaround
 
+### Trigger Design Checklist
+
+When creating or updating triggers, ensure each trigger includes:
+
+- [ ] **Clear action items** - Tell users what to do (delete, fix, tag, etc.)
+- [ ] **Link to supporting data** - Use `url` + `url_name` to link to related items
+- [ ] **URL in description** - Include the same URL in the description for easy copy/paste
+- [ ] **Helper item reference** - If a TEXT item contains details, reference it in the trigger
+
+**Example trigger description structure:**
+```
+{ITEM.LASTVALUE} issue(s) detected.
+
+Check Resource details: /zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
+
+Action: [Specific steps to resolve the issue]
+```
+
+---
+
+## Local Development with Docker Compose
+
+Use the provided Docker Compose setup to test Zabbix integration locally before deploying to production. This enables faster iteration and catches issues early.
+
+### Quick Start
+
+```bash
+# Start Zabbix stack
+cd tests
+docker compose up -d
+
+# Wait for services (takes ~60 seconds)
+docker ps --format '{{.Names}}: {{.Status}}' | grep zabbix
+
+# Access Zabbix UI
+open http://localhost:8080
+# Login: Admin / zabbix
+```
+
+### Testing Workflow
+
+1. **Import template:**
+   ```bash
+   # Use Zabbix API or UI to import
+   # templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml
+   ```
+
+2. **Create test host** named `azure-storage-cost-analyzer`
+
+3. **Send test data:**
+   ```bash
+   # Create test batch file
+   cat > /tmp/test_batch.txt << 'EOF'
+   azure-storage-cost-analyzer azure.storage.all.total_disks 5
+   azure-storage-cost-analyzer azure.storage.all.total_snapshots 10
+   azure-storage-cost-analyzer azure.storage.all.invalid_tags 2
+   azure-storage-cost-analyzer azure.storage.all.resource_details "[INVALID TAG] test-disk | test-rg | Tag: bad-date\nDISK | disk-1 | rg-1 | Sub-1 | 30GB"
+   EOF
+
+   # Send to local Zabbix
+   zabbix_sender -z localhost -p 10051 -i /tmp/test_batch.txt -vv
+   ```
+
+4. **Verify in UI:**
+   - Check **Monitoring → Latest data** for received values
+   - Check **Monitoring → Problems** for triggered alerts
+   - Test trigger URL links work correctly
+
+### Cleanup
+
+```bash
+cd tests
+docker compose down -v  # -v removes volumes
+```
+
 ---
 
 ## Azure DevOps Pipeline Integration
