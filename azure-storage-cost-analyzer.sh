@@ -2034,27 +2034,6 @@ EOF
             echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp"
             echo "$zabbix_host azure.storage.script.execution_time_seconds $execution_duration"
             echo "$zabbix_host azure.storage.script.last_run_status 0"
-
-            # Per-subscription metrics
-            for result in "${subscription_results[@]}"; do
-                local sub_id=$(echo "$result" | jq -r '.subscription_id // ""' 2>/dev/null || echo "")
-                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
-                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
-
-                if [[ "$sub_status" == "success" && -n "$sub_id" ]]; then
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
-                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
-                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
-
-                    echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $sub_waste"
-                    echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $sub_disks"
-                    echo "$zabbix_host azure.storage.subscription.snapshot_count[$sub_id] $sub_snapshots"
-                    echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $sub_invalid_tags"
-                    echo "$zabbix_host azure.storage.subscription.excluded_pending_review[$sub_id] $sub_excluded_pending"
-                fi
-            done
             ;;
 
         text)
