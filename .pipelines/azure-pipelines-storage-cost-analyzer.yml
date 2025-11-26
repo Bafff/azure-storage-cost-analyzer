@@ -123,6 +123,22 @@ stages:
                 echo "Zabbix Server: $(ZABBIX_SERVER)"
                 echo "Zabbix Host: $(ZABBIX_HOST)"
                 echo "Scan Period: Last $(SCAN_DAYS) days"
+                echo "Excluded RGs: ${EXCLUDE_RESOURCE_GROUPS:-none}"
+                echo ""
+                echo "Command executed:"
+                echo "  ./azure-storage-cost-analyzer.sh unused-report \\"
+                echo "    --subscriptions all \\"
+                echo "    --days $(SCAN_DAYS) \\"
+                echo "    --output-format json \\"
+                echo "    --skip-tagged \\"
+                echo "    --zabbix-send \\"
+                echo "    --zabbix-server $(ZABBIX_SERVER) \\"
+                echo "    --zabbix-host $(ZABBIX_HOST) \\"
+                echo "    --zabbix-port 10051 \\"
+                echo "    --quiet${EXCLUDE_RESOURCE_GROUPS:+ \\\\}"
+                if [ -n "$(EXCLUDE_RESOURCE_GROUPS)" ]; then
+                  echo "    --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)"
+                fi
                 echo "========================================"
 
 # Alternative: Single subscription scan (uncomment if needed)
