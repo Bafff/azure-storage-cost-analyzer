@@ -8,8 +8,8 @@ The repository includes a single Zabbix template in YAML format:
 
 **templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml** - YAML format ⭐
 - Modern, clean YAML format
-- Includes all items, discovery rules, and triggers
-- Compact and maintainable (13K)
+- Includes all items and triggers for aggregate metrics
+- Compact and maintainable
 - UUID format: With dashes (UUID v4: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
 - Compatible with both Web UI and API import
 - Used by default in automated tests
@@ -129,8 +129,6 @@ docker compose ps
    - ✓ Update existing items
    - ✓ Create new triggers
    - ✓ Update existing triggers
-   - ✓ Create new discovery rules
-   - ✓ Update existing discovery rules
 5. Click **Import**
 
 ### 4. Create Host
@@ -202,18 +200,12 @@ The Azure Storage Cost Monitor template includes:
 - **Excluded Pending Review** - Resources excluded due to review dates
 - **Script Execution Metrics** - Last run timestamp, execution time, status
 
-### Discovery Rules
-- **Azure Subscriptions Discovery** - Auto-discovers subscriptions
-  - Creates per-subscription metrics for waste, disks, snapshots
-  - Creates triggers for high waste alerts
-
 ### Triggers
 - **High total storage waste** (>$500) - WARNING
-- **Critical total storage waste** (>$1000) - HIGH
+- **Critical total storage waste** (>$1000) - AVERAGE
 - **Script hasn't run in 24 hours** - AVERAGE
 - **Script execution failed** - WARNING
 - **Invalid review date tags detected** - WARNING
-- Per-subscription triggers for high waste and disk counts
 
 ## Troubleshooting
 
