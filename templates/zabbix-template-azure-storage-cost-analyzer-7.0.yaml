@@ -109,7 +109,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} unattached disk(s) found across Azure subscriptions.
 
-          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          View Resource Details: Go to Monitoring → Latest data → filter by "Resource Details"
           Or use the link in the trigger's Links section to see detailed disk/snapshot information.
 
           Action: Delete or attach disks, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
@@ -156,7 +156,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} snapshot(s) found across Azure subscriptions.
 
-          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          View Resource Details: Go to Monitoring → Latest data → filter by "Resource Details"
           Or use the link in the trigger's Links section to see detailed disk/snapshot information.
 
           Action: Delete unneeded snapshots, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
@@ -204,7 +204,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} resource(s) have malformed Resource-Next-Review-Date tags.
 
-          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          View Resource Details: Go to Monitoring → Latest data → filter by "Resource Details"
           Or use the link in the trigger's Links section to identify affected resources.
 
           Expected tag format: YYYY.MM.DD (e.g., 2025.12.31)
