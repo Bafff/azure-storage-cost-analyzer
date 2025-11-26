@@ -43,9 +43,6 @@ zabbix_export:
     - macro: '{$WASTE_CRITICAL_THRESHOLD}'
       value: '200'
       description: Critical threshold for monthly waste in USD
-    - macro: '{$ZABBIX_URL}'
-      value: 'https://your-zabbix-server.com'
-      description: Base URL of your Zabbix server (used in trigger description links)
     items:
     - uuid: 915c5d50a7684913a9221dcb8fa1f565
       name: Total Monthly Waste (All Subscriptions)
@@ -112,7 +109,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} unattached disk(s) found across Azure subscriptions.
 
-          Check Resource details: {$ZABBIX_URL}/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
+          Click "Check Resource details" link above, or go to Monitoring → Latest data → filter by "Resource Details".
 
           Action: Delete or attach disks, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
         tags:
@@ -158,7 +155,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} snapshot(s) found across Azure subscriptions.
 
-          Check Resource details: {$ZABBIX_URL}/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
+          Click "Check Resource details" link above, or go to Monitoring → Latest data → filter by "Resource Details".
 
           Action: Delete unneeded snapshots, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
         tags:
@@ -205,7 +202,7 @@ zabbix_export:
         description: |
           {ITEM.LASTVALUE} resource(s) have malformed Resource-Next-Review-Date tags.
 
-          Check Resource details: {$ZABBIX_URL}/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
+          Click "Check Resource details" link above, or go to Monitoring → Latest data → filter by "Resource Details".
 
           Expected tag format: YYYY.MM.DD (e.g., 2025.12.31)
           Action: Correct the tag format on affected resources.
