@@ -21,9 +21,10 @@
 set -euo pipefail
 
 # Default values
-# Default values
-# Note: Hardcoded defaults have been removed for production safety.
-# Users must provide arguments or rely on current Azure context.
+# Default values (used by historical/default single-resource flows)
+DEFAULT_SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"
+DEFAULT_RESOURCE_GROUP="MC_internal-aks-dev-rg_internal-aks-dev_centralus"
+DEFAULT_PG_DISK="pvc-596782ff-6859-4334-992c-fa519fa2f501"
 
 
 # Configuration file variables (will be populated by load_config)
