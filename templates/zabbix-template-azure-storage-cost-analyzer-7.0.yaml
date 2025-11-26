@@ -104,11 +104,15 @@ zabbix_export:
         name: 'Unattached disks detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
+        url: '/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1'
+        url_name: Check Resource details
         description: |
           {ITEM.LASTVALUE} unattached disk(s) found across Azure subscriptions.
 
-          Check the Resource Details item for specific disk names and resource groups.
-          Review and either delete or attach these disks to reduce costs.
+          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          Or use the link in the trigger's Links section to see detailed disk/snapshot information.
+
+          Action: Review and either delete or attach these disks to reduce costs.
         tags:
         - tag: scope
           value: storage
@@ -147,11 +151,15 @@ zabbix_export:
         name: 'Snapshots detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
+        url: '/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1'
+        url_name: Check Resource details
         description: |
           {ITEM.LASTVALUE} snapshot(s) found across Azure subscriptions.
 
-          Check the Resource Details item for specific snapshot names and resource groups.
-          Review and either delete old snapshots or archive them to reduce costs.
+          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          Or use the link in the trigger's Links section to see detailed disk/snapshot information.
+
+          Action: Review and either delete old snapshots or archive them to reduce costs.
         tags:
         - tag: scope
           value: storage
@@ -191,8 +199,16 @@ zabbix_export:
         name: 'Invalid review date tags detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
-        description: 'Resources have malformed review date tags - check and correct
-          tag format. Expected format: YYYY.MM.DD'
+        url: '/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1'
+        url_name: Check Resource details
+        description: |
+          {ITEM.LASTVALUE} resource(s) have malformed Resource-Next-Review-Date tags.
+
+          View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
+          Or use the link in the trigger's Links section to identify affected resources.
+
+          Expected tag format: YYYY.MM.DD (e.g., 2025.12.31)
+          Action: Correct the tag format on affected resources.
         tags:
         - tag: scope
           value: tag-management
