@@ -220,7 +220,7 @@ When creating or updating triggers, ensure each trigger includes:
 
 - [ ] **Clear action items** - Tell users what to do (delete, fix, tag, etc.)
 - [ ] **Link to supporting data** - Use `url` + `url_name` to link to related items
-- [ ] **Reference the link in description** - Point users to the clickable link (macros don't expand in descriptions)
+- [ ] **Reference the link in description** - Point users to the clickable link (`{HOST.ID}` doesn't expand in descriptions)
 - [ ] **Helper item reference** - If a TEXT item contains details, reference it in the trigger
 
 **Example trigger description structure:**
@@ -232,7 +232,7 @@ Click "Check Resource details" link above, or go to Monitoring â†’ Latest data â
 Action: [Specific steps to resolve the issue]
 ```
 
-**Note:** Zabbix macros like `{HOST.ID}` are not expanded in description text, so use the trigger's URL link instead of embedding URLs in descriptions.
+**Note:** `{HOST.ID}` macro is not expanded in description text, so use the trigger's URL link instead of embedding URLs in descriptions.
 
 ---
 
