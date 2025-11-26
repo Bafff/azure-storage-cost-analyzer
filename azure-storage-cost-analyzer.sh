@@ -2403,13 +2403,14 @@ send_batch_to_zabbix() {
     # Log output for debugging
     echo "$send_output" >> /tmp/zabbix_send.log
 
-    # Check for success: either exit code 0 or "processed:" in output
-    if [[ $send_result -eq 0 ]] || echo "$send_output" | grep -q "processed:"; then
+    # Check for success: must have "processed:" and "failed: 0" in output
+    if echo "$send_output" | grep -q "processed:" && echo "$send_output" | grep -q "failed: 0"; then
         log_progress "Successfully sent all metrics to Zabbix"
         rm -f "$batch_file"
         return 0
     else
         log_progress "ERROR: Failed to send metrics to Zabbix"
+        log_progress "zabbix_sender exit code: $send_result"
         # Keep batch file for debugging
         local failed_batch="/tmp/failed_zabbix_batch_$(date +%Y%m%d-%H%M%S).txt"
         mv "$batch_file" "$failed_batch"
