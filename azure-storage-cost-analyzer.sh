@@ -2284,8 +2284,9 @@ create_zabbix_batch_file() {
     fi
 
     # Escape newlines and quotes for zabbix_sender batch format (one metric per line)
+    # Use awk for portable newline replacement (works on both BSD/macOS and GNU/Linux)
     local escaped_details
-    escaped_details=$(printf '%s' "$resource_details" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+    escaped_details=$(printf '%s' "$resource_details" | awk 'BEGIN{ORS="\\n"} {gsub(/"/, "\\\""); print}' | sed 's/\\n$//')
 
     # Send resource details as single-line value
     echo "$hostname azure.storage.all.resource_details \"$escaped_details\"" >> "$batch_file"
