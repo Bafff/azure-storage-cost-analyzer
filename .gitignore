@@ -31,7 +31,7 @@ __pycache__/
 config.conf
 
 # Keep example files
-!azure-storage-monitor.conf.example
+!azure-storage-cost-analyzer.conf.example
 
 # Docker and Zabbix test artifacts
 zabbix_batch_*.txt

@@ -113,7 +113,7 @@ macros:
 ```bash
 python - <<'PY'
 import uuid, yaml, pathlib
-p = pathlib.Path("templates/zabbix-template-azure-storage-monitor-7.0.yaml")
+p = pathlib.Path("templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml")
 d = yaml.safe_load(p.read_text())
 def walk(o):
     if isinstance(o, dict):

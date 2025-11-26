@@ -12,8 +12,8 @@
 # Resource group specific queries use traditional az_with_timeout CLI commands.
 #
 # CONFIGURATION: Supports INI-style configuration files for centralized settings management.
-# Use --config flag or place config at: /etc/azure-storage-monitor/config.conf,
-# ~/.azure-storage-monitor.conf, or ./azure-storage-monitor.conf
+# Use --config flag or place config at: /etc/azure-storage-cost-analyzer/config.conf,
+# ~/.azure-storage-cost-analyzer.conf, or ./azure-storage-cost-analyzer.conf
 #
 # Usage:
 #   ./azure-storage-cost-analyzer.sh [RESOURCE_IDENTIFIER] [SUBSCRIPTION_ID] [START_DATE] [END_DATE] [OPTIONS]
@@ -547,7 +547,7 @@ usage() {
     echo ""
     echo "  # Send metrics using explicit server and host"
     echo "  $0 unused-report --days 7 --output-format zabbix --zabbix-send \\"
-    echo "     --zabbix-server monitoring.company.com --zabbix-host azure-storage-monitor"
+    echo "     --zabbix-server monitoring.company.com --zabbix-host azure-storage-cost-analyzer"
     echo ""
     echo "  # Send metrics using agent config file"
     echo "  $0 unused-report --days 7 --output-format zabbix --zabbix-send \\"
@@ -729,20 +729,20 @@ find_config_file() {
     fi
 
     # Priority 2: System-wide config
-    if [[ -f "/etc/azure-storage-monitor/config.conf" ]]; then
-        echo "/etc/azure-storage-monitor/config.conf"
+    if [[ -f "/etc/azure-storage-cost-analyzer/config.conf" ]]; then
+        echo "/etc/azure-storage-cost-analyzer/config.conf"
         return 0
     fi
 
     # Priority 3: User-specific config
-    if [[ -f "$HOME/.azure-storage-monitor.conf" ]]; then
-        echo "$HOME/.azure-storage-monitor.conf"
+    if [[ -f "$HOME/.azure-storage-cost-analyzer.conf" ]]; then
+        echo "$HOME/.azure-storage-cost-analyzer.conf"
         return 0
     fi
 
     # Priority 4: Local directory config
-    if [[ -f "./azure-storage-monitor.conf" ]]; then
-        echo "./azure-storage-monitor.conf"
+    if [[ -f "./azure-storage-cost-analyzer.conf" ]]; then
+        echo "./azure-storage-cost-analyzer.conf"
         return 0
     fi
 
@@ -2014,7 +2014,7 @@ EOF
         zabbix)
             # Output Zabbix metrics (batch format without timestamps)
             local timestamp=$(date +%s)
-            local zabbix_host="${CONFIG_ZABBIX_HOSTNAME:-azure-storage-monitor}"
+            local zabbix_host="${CONFIG_ZABBIX_HOSTNAME:-azure-storage-cost-analyzer}"
 
             echo "$zabbix_host azure.storage.all.total_waste.monthly $(printf "%.2f" "$total_waste_monthly")"
             echo "$zabbix_host azure.storage.all.total_disks $total_disk_count"
@@ -4429,7 +4429,7 @@ main() {
                     elif [[ -n "$zabbix_config_file" ]]; then
                         log_progress "Sending metrics to Zabbix using config file..."
                         local timestamp=$(date +%s)
-                        local batch_file=$(create_zabbix_batch_file "${zabbix_host:-azure-storage-monitor}" "$timestamp" "$report_output")
+                        local batch_file=$(create_zabbix_batch_file "${zabbix_host:-azure-storage-cost-analyzer}" "$timestamp" "$report_output")
 
                         if send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
                             log_progress "Metrics successfully sent to Zabbix"

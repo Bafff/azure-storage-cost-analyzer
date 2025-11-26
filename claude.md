@@ -25,9 +25,9 @@ This is a Bash-based Azure storage cost analysis tool that:
 ```
 .
 ├── azure-storage-cost-analyzer.sh       # Main analyzer script
-├── azure-storage-monitor.conf.example   # Configuration template
+├── azure-storage-cost-analyzer.conf.example   # Configuration template
 ├── .pipelines/                          # CI/CD pipelines
-│   └── azure-pipelines-storage-monitor.yml
+│   └── azure-pipelines-storage-cost-analyzer.yml
 ├── templates/                           # Zabbix templates and validation
 │   ├── zabbix-template-*.yaml
 │   └── validate-zabbix-template.py
@@ -113,8 +113,8 @@ Update docs when:
 ### Adding a New Zabbix Metric
 
 1. Update `azure-storage-cost-analyzer.sh` (zabbix sender logic)
-2. Update `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
-3. Run `./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+2. Update `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
+3. Run `./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 4. Update `docs/ZabbixIntegrationGuide.md` (document new metric)
 5. Update `docs/ZabbixTemplateAuthoring.md` if adding a pattern
 
@@ -123,7 +123,7 @@ Update docs when:
 1. Update `azure-storage-cost-analyzer.sh` (argument parsing)
 2. Update `README.md` (Quick Usage examples)
 3. Update `docs/QuickStartGuide.md` (detailed usage)
-4. Update `azure-storage-monitor.conf.example` if config option exists
+4. Update `azure-storage-cost-analyzer.conf.example` if config option exists
 
 ### Modifying Tag Exclusion Logic
 

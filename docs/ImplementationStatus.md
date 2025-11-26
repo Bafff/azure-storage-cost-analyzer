@@ -19,8 +19,8 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 | Zabbix sender integration | ✅ Fully implemented | Script (line 1390-1504) |
 | JSON output format | ✅ Fully implemented | Script (line 1248-1294) |
 | Zabbix output format | ✅ Fully implemented | Script (line 1297-1326) |
-| Zabbix 7.0.5 template | ✅ Created | `templates/zabbix-template-azure-storage-monitor-7.0.yaml` |
-| Azure DevOps pipeline | ✅ Created | `.pipelines/azure-pipelines-storage-monitor.yml` |
+| Zabbix 7.0.5 template | ✅ Created | `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml` |
+| Azure DevOps pipeline | ✅ Created | `.pipelines/azure-pipelines-storage-cost-analyzer.yml` |
 | Documentation | ✅ Complete | `ZabbixIntegrationGuide.md` |
 
 ---
@@ -32,8 +32,8 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 1. Log in to Zabbix frontend (7.0.5)
 2. Go to **Configuration → Templates**
 3. Click **Import**
-4. Upload: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
-5. Create host `azure-storage-monitor`:
+4. Upload: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
+5. Create host `azure-storage-cost-analyzer`:
    - Template: "Azure Storage Cost Monitor"
    - Interface: Trapper (port 10051)
    - Host groups: Templates/Cloud
@@ -43,7 +43,7 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 # Check host exists
 curl -s -X POST http://your-zabbix/api_jsonrpc.php \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"host.get","params":{"filter":{"host":"azure-storage-monitor"}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"host.get","params":{"filter":{"host":"azure-storage-cost-analyzer"}},"id":1}'
 ```
 
 ### Step 2: Configure Azure DevOps (10 minutes)
@@ -65,7 +65,7 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    ```
 
 3. **Import Pipeline**:
-   - Copy `.pipelines/azure-pipelines-storage-monitor.yml` to your repo
+   - Copy `.pipelines/azure-pipelines-storage-cost-analyzer.yml` to your repo
    - Update line 31: `azureSubscription: 'YOUR-SERVICE-CONNECTION-NAME'`
    - Commit and push
 
@@ -73,7 +73,7 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    - Pipelines → New Pipeline
    - Select your repo
    - Choose "Existing Azure Pipelines YAML file"
-   - Select `.pipelines/azure-pipelines-storage-monitor.yml`
+   - Select `.pipelines/azure-pipelines-storage-cost-analyzer.yml`
 
 ### Step 3: Test Run (2 minutes)
 
@@ -99,7 +99,7 @@ az login
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor \
+  --zabbix-host azure-storage-cost-analyzer \
   --quiet
 ```
 
@@ -111,7 +111,7 @@ az login
 
 **Verify in Zabbix:**
 - Monitoring → Latest data
-- Filter by host: `azure-storage-monitor`
+- Filter by host: `azure-storage-cost-analyzer`
 - Check items:
   - `azure.storage.all.total_waste.monthly`
   - `azure.storage.all.total_disks`
@@ -171,9 +171,9 @@ Script → zabbix_sender → Zabbix Trapper (10051) → Template → Triggers
 
 **Format (Zabbix sender):**
 ```
-azure-storage-monitor azure.storage.all.total_waste.monthly 1732114800 280.50
-azure-storage-monitor azure.storage.all.total_disks 1732114800 12
-azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114800
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 1732114800 280.50
+azure-storage-cost-analyzer azure.storage.all.total_disks 1732114800 12
+azure-storage-cost-analyzer azure.storage.script.last_run_timestamp 1732114800 1732114800
 ```
 
 **Send Methods:**
@@ -182,7 +182,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
    ```bash
    --zabbix-send \
    --zabbix-server monitoring.company.com \
-   --zabbix-host azure-storage-monitor
+   --zabbix-host azure-storage-cost-analyzer
    ```
 
 2. **Manual send from JSON:**
@@ -250,7 +250,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Zabbix Template Details
 
-**File:** `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+**File:** `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 
 ### Items (Aggregated)
 
@@ -289,7 +289,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Azure DevOps Pipeline Details
 
-**File:** `.pipelines/azure-pipelines-storage-monitor.yml`
+**File:** `.pipelines/azure-pipelines-storage-cost-analyzer.yml`
 
 ### Schedule
 - **Daily:** 2 AM UTC (`cron: "0 2 * * *"`)
@@ -337,7 +337,7 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
 ### Before Production Deployment
 
 - [ ] Zabbix 7.0.5 template imported
-- [ ] Zabbix host `azure-storage-monitor` created and linked to template
+- [ ] Zabbix host `azure-storage-cost-analyzer` created and linked to template
 - [ ] Variable group `zabbix-rs-credentials` created with `ZABBIX_SERVER`
 - [ ] Azure service connection has Reader role on all subscriptions
 - [ ] Pipeline YAML updated with correct service connection name
@@ -368,11 +368,11 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
   --output-format json \
   --zabbix-send \
   --zabbix-server your-zabbix-server.com \
-  --zabbix-host azure-storage-monitor \
+  --zabbix-host azure-storage-cost-analyzer \
   --verbose  # See what's being sent
 
 # Test 4: Verify zabbix_sender works
-echo "azure-storage-monitor azure.storage.test.item $(date +%s) 123" | \
+echo "azure-storage-cost-analyzer azure.storage.test.item $(date +%s) 123" | \
   zabbix_sender -z your-zabbix-server.com -p 10051 -i -
 ```
 

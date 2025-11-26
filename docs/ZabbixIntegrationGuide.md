@@ -81,8 +81,8 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Zabbix version**: 7.0.5 or higher
 - **Zabbix Trapper port**: 10051 (default) open and accessible from Azure DevOps agents
-- **Template imported**: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
-- **Host created**: `azure-storage-monitor` (or custom name)
+- **Template imported**: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
+- **Host created**: `azure-storage-cost-analyzer` (or custom name)
 
 ### 2. Azure DevOps Requirements
 
@@ -106,7 +106,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Log in to Zabbix frontend
 2. Navigate to: **Configuration** → **Templates**
 3. Click **Import**
-4. Upload `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+4. Upload `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 5. Click **Import**
 
 ### Step 2: Create Host
@@ -114,7 +114,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Navigate to: **Configuration** → **Hosts**
 2. Click **Create host**
 3. Configure:
-   - **Host name**: `azure-storage-monitor` (must match `--zabbix-host` parameter)
+   - **Host name**: `azure-storage-cost-analyzer` (must match `--zabbix-host` parameter)
    - **Templates**: Link "Azure Storage Cost Monitor" template
    - **Interfaces**: Add Trapper interface (port 10051)
    - **Groups**: Add to appropriate host group (e.g., "Cloud/Azure")
@@ -169,7 +169,7 @@ Your Azure DevOps agents need `zabbix_sender` installed. Add this to your pipeli
 
 ### Pipeline YAML Example
 
-Create `.pipelines/azure-pipelines-storage-monitor.yml`:
+Create `.pipelines/azure-pipelines-storage-cost-analyzer.yml`:
 
 ```yaml
 trigger: none  # Manual or scheduled only
@@ -188,7 +188,7 @@ pool:
 variables:
   - group: zabbix-rs-credentials  # Variable group with ZABBIX_SERVER
   - name: ZABBIX_HOST
-    value: 'azure-storage-monitor'
+    value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30
 
@@ -266,7 +266,7 @@ Repeat for each subscription or use management group scope.
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Scan Specific Subscriptions
@@ -278,12 +278,12 @@ Repeat for each subscription or use management group scope.
   --days 30 \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Using Config File
 
-Create `/etc/azure-storage-monitor/config.conf`:
+Create `/etc/azure-storage-cost-analyzer/config.conf`:
 
 ```ini
 [azure]
@@ -298,7 +298,7 @@ verbosity = quiet
 enabled = true
 server = monitoring.company.com
 port = 10051
-hostname = azure-storage-monitor
+hostname = azure-storage-cost-analyzer
 auto_send = true
 ```
 
@@ -306,7 +306,7 @@ Then run:
 
 ```bash
 ./azure-storage-cost-analyzer.sh unused-report \
-  --config /etc/azure-storage-monitor/config.conf
+  --config /etc/azure-storage-cost-analyzer/config.conf
 ```
 
 ### Dry Run (No Zabbix Send)
@@ -407,7 +407,7 @@ brew install zabbix
 ### Issue: No data in Zabbix
 
 **Check:**
-1. Host `azure-storage-monitor` exists in Zabbix
+1. Host `azure-storage-cost-analyzer` exists in Zabbix
 2. Template is linked to host
 3. Items are enabled (not disabled)
 4. Check Zabbix server logs:
@@ -422,7 +422,7 @@ brew install zabbix
 This happens when corrupted data (e.g., with timestamps in value field) was sent to items.
 
 **Solution:**
-1. In Zabbix: **Data collection** → **Hosts** → `azure-storage-monitor` → **Items**
+1. In Zabbix: **Data collection** → **Hosts** → `azure-storage-cost-analyzer` → **Items**
 2. Select affected items
 3. Click **Mass update** → **Clear history and trends**
 4. Or recreate the host from scratch
@@ -469,7 +469,7 @@ Enable verbose logging:
   --verbose \  # Add verbose flag
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Validate Metrics Manually
@@ -479,14 +479,14 @@ Send test metric to Zabbix:
 ```bash
 # Single metric (no timestamp - Zabbix uses current time)
 zabbix_sender -z your-zabbix-server.com -p 10051 \
-  -s "azure-storage-monitor" \
+  -s "azure-storage-cost-analyzer" \
   -k "azure.storage.all.total_waste.monthly" \
   -o "123.45"
 
 # Batch file format (hostname key value - NO timestamps)
 cat > /tmp/test_batch.txt << 'EOF'
-azure-storage-monitor azure.storage.all.total_waste.monthly 123.45
-azure-storage-monitor azure.storage.all.total_disks 5
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 123.45
+azure-storage-cost-analyzer azure.storage.all.total_disks 5
 EOF
 zabbix_sender -z your-zabbix-server.com -p 10051 -i /tmp/test_batch.txt
 ```

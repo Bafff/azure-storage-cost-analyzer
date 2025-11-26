@@ -136,7 +136,7 @@ The existing script (`azure-storage-cost-analyzer.sh`) is designed for **interac
 - Machine-readable output formats (JSON via `--output-format json`)
 - Zabbix integration (`--zabbix-send`, templates in `templates/`)
 - Multi-subscription support (`--subscriptions all`)
-- Configuration files (`azure-storage-monitor.conf`)
+- Configuration files (`azure-storage-cost-analyzer.conf`)
 - Automatic date range calculation (`--days N`, `--last-month`)
 - Threshold-based alerting (Zabbix triggers)
 - Tag-based exclusion (`--skip-tagged`)
@@ -422,14 +422,14 @@ Centralized configuration management.
 **Configuration File Location (Priority Order):**
 
 1. `--config <path>` (command-line override)
-2. `/etc/azure-storage-monitor/config.conf` (system-wide)
-3. `~/.azure-storage-monitor.conf` (user-specific)
-4. `./azure-storage-monitor.conf` (local directory)
+2. `/etc/azure-storage-cost-analyzer/config.conf` (system-wide)
+3. `~/.azure-storage-cost-analyzer.conf` (user-specific)
+4. `./azure-storage-cost-analyzer.conf` (local directory)
 
 **Configuration File Format (INI-style):**
 
 ```ini
-# /etc/azure-storage-monitor/config.conf
+# /etc/azure-storage-cost-analyzer/config.conf
 
 [azure]
 # Azure subscriptions to scan
@@ -465,7 +465,7 @@ enabled = true
 # Zabbix server configuration
 server = monitoring.company.com
 port = 10051
-hostname = azure-storage-monitor
+hostname = azure-storage-cost-analyzer
 
 # Auto-send metrics to Zabbix
 auto_send = true
@@ -486,7 +486,7 @@ critical_disk_count = 20
 
 [logging]
 # Log file path
-file = /var/log/azure-monitor/azure-storage-monitor.log
+file = /var/log/azure-monitor/azure-storage-cost-analyzer.log
 
 # Log level: debug, info, warn, error
 level = info
@@ -534,7 +534,7 @@ Send metrics to Zabbix server using zabbix_sender.
     --output-format zabbix \
     --zabbix-send \
     --zabbix-server monitoring.company.com \
-    --zabbix-host azure-storage-monitor
+    --zabbix-host azure-storage-cost-analyzer
 
 # Or use config file:
 ./script.sh unused-report --config /etc/azure-monitor/config.conf
@@ -579,7 +579,7 @@ send_to_zabbix() {
                   -s "$hostname" \
                   -k "$key" \
                   -o "$value" \
-                  2>&1 | logger -t azure-storage-monitor
+                  2>&1 | logger -t azure-storage-cost-analyzer
 
     return $?
 }
@@ -732,15 +732,15 @@ check_thresholds() {
 # In Zabbix UI or API:
 
 Trigger: Azure Storage Waste - Warning
-Expression: last(/azure-storage-monitor/azure.storage.total_waste.monthly) > 50
+Expression: last(/azure-storage-cost-analyzer/azure.storage.total_waste.monthly) > 50
 Severity: Average
 
 Trigger: Azure Storage Waste - Critical
-Expression: last(/azure-storage-monitor/azure.storage.total_waste.monthly) > 100
+Expression: last(/azure-storage-cost-analyzer/azure.storage.total_waste.monthly) > 100
 Severity: High
 
 Trigger: Large Number of Unattached Disks
-Expression: last(/azure-storage-monitor/azure.storage.unattached.disks.count) > 20
+Expression: last(/azure-storage-cost-analyzer/azure.storage.unattached.disks.count) > 20
 Severity: Average
 ```
 
@@ -1132,7 +1132,7 @@ log() {
 
     # Syslog
     if [[ "$ENABLE_SYSLOG" == "true" ]]; then
-        logger -t azure-storage-monitor -p "${SYSLOG_FACILITY}.${level,,}" "[$level] $message"
+        logger -t azure-storage-cost-analyzer -p "${SYSLOG_FACILITY}.${level,,}" "[$level] $message"
     fi
 
     # Console (if verbose)
@@ -1734,7 +1734,7 @@ Conditions:
 ```yaml
 # Parent trigger: Script execution health
 Trigger: Azure Storage Script - Not Running
-Expression: nodata(/azure-storage-monitor/azure.storage.script.last_run_timestamp, 2h)
+Expression: nodata(/azure-storage-cost-analyzer/azure.storage.script.last_run_timestamp, 2h)
 Severity: High
 Description: Script hasn't run in 2 hours
 
@@ -1753,7 +1753,7 @@ Reason: If script isn't running, all data is stale - no point alerting
 ```yaml
 # Parent: Azure authentication
 Trigger: Azure Storage Script - Authentication Failed
-Expression: last(/azure-storage-monitor/azure.storage.script.last_run_status) = 2
+Expression: last(/azure-storage-cost-analyzer/azure.storage.script.last_run_status) = 2
 Severity: High
 
 # Dependent triggers:
@@ -1769,7 +1769,7 @@ Reason: Can't collect data without valid authentication
 ```yaml
 # Parent: Overall monitoring health
 Trigger: Azure Storage - Partial Failure
-Expression: last(/azure-storage-monitor/azure.storage.script.last_run_status) = 21
+Expression: last(/azure-storage-cost-analyzer/azure.storage.script.last_run_status) = 21
 Severity: Average
 Description: Some subscriptions failed to process
 
@@ -1832,7 +1832,7 @@ Description: Some subscriptions failed to process
 **Configuration in Script:**
 
 ```ini
-# /etc/azure-storage-monitor/config.conf
+# /etc/azure-storage-cost-analyzer/config.conf
 
 [exclusions]
 # Azure tags for permanent exclusions
@@ -1927,7 +1927,7 @@ Resources
 **Configuration:**
 
 ```ini
-# /etc/azure-storage-monitor/config.conf
+# /etc/azure-storage-cost-analyzer/config.conf
 
 [exclusions]
 # Exclude disks matching these name patterns (regex)
@@ -2104,7 +2104,7 @@ Description: |
 ### Configuration File - Complete Exclusions Section
 
 ```ini
-# /etc/azure-storage-monitor/config.conf
+# /etc/azure-storage-cost-analyzer/config.conf
 
 [exclusions]
 # ============================================================================
@@ -2189,7 +2189,7 @@ az disk show --name dr-standby-postgres-disk -g production-rg \
 # Example: databricks-worker-12345-osdisk keeps alerting
 
 # Step 2: Add pattern to config file
-# Edit /etc/azure-storage-monitor/config.conf:
+# Edit /etc/azure-storage-cost-analyzer/config.conf:
 [exclusions]
 exclude_patterns = ..., ^databricks-.*$
 
@@ -2300,7 +2300,7 @@ AZURE_MONITOR_DATE_END
 # Zabbix
 ZABBIX_SERVER=monitoring.company.com
 ZABBIX_PORT=10051
-ZABBIX_HOSTNAME=azure-storage-monitor
+ZABBIX_HOSTNAME=azure-storage-cost-analyzer
 ZABBIX_ENABLED=true
 
 # Thresholds
@@ -2324,26 +2324,26 @@ AZURE_MONITOR_VERBOSITY=quiet
 
 ```bash
 # 1. Install script
-sudo cp azure-storage-cost-analyzer.sh /usr/local/bin/azure-storage-monitor
-sudo chmod +x /usr/local/bin/azure-storage-monitor
+sudo cp azure-storage-cost-analyzer.sh /usr/local/bin/azure-storage-cost-analyzer
+sudo chmod +x /usr/local/bin/azure-storage-cost-analyzer
 
 # 2. Create directories
-sudo mkdir -p /etc/azure-storage-monitor
-sudo mkdir -p /var/log/azure-storage-monitor
+sudo mkdir -p /etc/azure-storage-cost-analyzer
+sudo mkdir -p /var/log/azure-storage-cost-analyzer
 
 # 3. Create configuration
-sudo cp config.conf /etc/azure-storage-monitor/config.conf
-sudo chmod 600 /etc/azure-storage-monitor/config.conf
+sudo cp config.conf /etc/azure-storage-cost-analyzer/config.conf
+sudo chmod 600 /etc/azure-storage-cost-analyzer/config.conf
 
 # 4. Create service account (optional)
 sudo useradd -r -s /bin/false azure-monitor
-sudo chown -R azure-monitor:azure-monitor /var/log/azure-storage-monitor
+sudo chown -R azure-monitor:azure-monitor /var/log/azure-storage-cost-analyzer
 ```
 
 ### Systemd Service
 
 ```ini
-# /etc/systemd/system/azure-storage-monitor.service
+# /etc/systemd/system/azure-storage-cost-analyzer.service
 [Unit]
 Description=Azure Storage Cost Monitor
 After=network-online.target
@@ -2353,12 +2353,12 @@ Wants=network-online.target
 Type=oneshot
 User=azure-monitor
 Group=azure-monitor
-ExecStart=/usr/local/bin/azure-storage-monitor \
-    --config /etc/azure-storage-monitor/config.conf \
+ExecStart=/usr/local/bin/azure-storage-cost-analyzer \
+    --config /etc/azure-storage-cost-analyzer/config.conf \
     unused-report
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=azure-storage-monitor
+SyslogIdentifier=azure-storage-cost-analyzer
 
 [Install]
 WantedBy=multi-user.target
@@ -2367,10 +2367,10 @@ WantedBy=multi-user.target
 ### Systemd Timer
 
 ```ini
-# /etc/systemd/system/azure-storage-monitor.timer
+# /etc/systemd/system/azure-storage-cost-analyzer.timer
 [Unit]
 Description=Run Azure Storage Monitor hourly
-Requires=azure-storage-monitor.service
+Requires=azure-storage-cost-analyzer.service
 
 [Timer]
 OnCalendar=hourly
@@ -2384,23 +2384,23 @@ WantedBy=timers.target
 Enable:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable azure-storage-monitor.timer
-sudo systemctl start azure-storage-monitor.timer
+sudo systemctl enable azure-storage-cost-analyzer.timer
+sudo systemctl start azure-storage-cost-analyzer.timer
 ```
 
 ### Cron Example
 
 ```bash
-# /etc/cron.d/azure-storage-monitor
+# /etc/cron.d/azure-storage-cost-analyzer
 
 # Run every hour at :05
-5 * * * * azure-monitor /usr/local/bin/azure-storage-monitor --config /etc/azure-storage-monitor/config.conf unused-report --quiet 2>&1 | logger -t azure-storage-monitor
+5 * * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --quiet 2>&1 | logger -t azure-storage-cost-analyzer
 
 # Daily detailed report
-0 8 * * * azure-monitor /usr/local/bin/azure-storage-monitor --config /etc/azure-storage-monitor/config.conf unused-report --output-format json > /var/log/azure-storage-monitor/daily-$(date +\%Y\%m\%d).json
+0 8 * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --output-format json > /var/log/azure-storage-cost-analyzer/daily-$(date +\%Y\%m\%d).json
 
 # LLD for Zabbix - every 6 hours
-0 */6 * * * azure-monitor /usr/local/bin/azure-storage-monitor --zabbix-discovery subscriptions --output-format json --quiet
+0 */6 * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --zabbix-discovery subscriptions --output-format json --quiet
 ```
 
 ---
@@ -2747,12 +2747,12 @@ zabbix_get -s zabbix-server -k template.import[azure_storage_monitor_template.xm
 
 ```bash
 # Normal execution (quiet mode)
-$ /usr/local/bin/azure-storage-monitor --config /etc/azure-storage-monitor/config.conf unused-report --quiet
+$ /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --quiet
 $ echo $?
 0
 
 # With warning threshold exceeded
-$ /usr/local/bin/azure-storage-monitor --config /etc/azure-storage-monitor/config.conf unused-report --quiet
+$ /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --quiet
 $ echo $?
 10
 ```

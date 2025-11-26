@@ -27,7 +27,7 @@ zabbix_export:
           --output-format json \
           --zabbix-send \
           --zabbix-server your-zabbix-server.com \
-          --zabbix-host azure-storage-monitor
+          --zabbix-host azure-storage-cost-analyzer
     groups:
     - name: Templates/Cloud
     items:

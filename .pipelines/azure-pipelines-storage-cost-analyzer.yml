@@ -8,7 +8,7 @@
 #   1. Azure service connection with Reader access to all subscriptions
 #   2. Variable group 'zabbix-rs-credentials' with ZABBIX_SERVER variable
 #   3. Zabbix server accessible on port 10051 from Azure DevOps agents
-#   4. Zabbix host 'azure-storage-monitor' configured with template
+#   4. Zabbix host 'azure-storage-cost-analyzer' configured with template
 
 name: Azure-Storage-Waste-Monitor-$(Date:yyyyMMdd)-$(Rev:r)
 
@@ -31,7 +31,7 @@ pool:
 variables:
   - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
   - name: ZABBIX_HOST
-    value: 'azure-storage-monitor'
+    value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30  # Analyze last 30 days
   - name: OUTPUT_DIR

@@ -359,13 +359,13 @@ azure-storage-cost-analyzer/
 ├── .gitignore
 ├── README.md                           # Main documentation
 ├── azure-storage-cost-analyzer.sh      # Main script
-├── azure-storage-monitor.conf.example  # Config template
-├── docker-compose.yml                  # Zabbix test environment
+├── azure-storage-cost-analyzer.conf.example  # Config template
+├── tests/docker-compose.yml            # Zabbix test environment
 ├── claude.md / AGENTS.md               # AI agent guides
 ├── .pipelines/
-│   └── azure-pipelines-storage-monitor.yml # ADO pipeline
+│   └── azure-pipelines-storage-cost-analyzer.yml # ADO pipeline
 ├── templates/
-│   ├── zabbix-template-azure-storage-monitor-7.0.yaml  # Zabbix template
+│   ├── zabbix-template-azure-storage-cost-analyzer-7.0.yaml  # Zabbix template
 │   └── validate-zabbix-template.py     # Template validator
 ├── tests/                              # Test scripts
 │   ├── test-phase1-features.sh

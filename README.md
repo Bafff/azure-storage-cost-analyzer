@@ -8,7 +8,7 @@ CLI tooling to discover and quantify wasted Azure storage spend (unattached disk
 - Tag-based exclusion (`Resource-Next-Review-Date`) to defer approved resources until a review date.
 - Resource Group exclusion with age-based anomaly detection (e.g., exclude ephemeral Databricks resources, but alert on old orphaned ones).
 - Zabbix sender integration (metrics and LLD) and ready-to-run Azure Pipelines YAML.
-- Configurable via INI (`azure-storage-monitor.conf.example`) or CLI flags.
+- Configurable via INI (`azure-storage-cost-analyzer.conf.example`) or CLI flags.
 
 ## Quick Usage
 ```bash
@@ -31,7 +31,7 @@ chmod +x azure-storage-cost-analyzer.sh
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.example.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 
 # With exclusions (exclude tagged resources + specific RGs)
 ./azure-storage-cost-analyzer.sh unused-report \
@@ -61,7 +61,7 @@ chmod +x azure-storage-cost-analyzer.sh
 - **Platform:** Works on Linux and macOS (bash 3.2+ compatible)
 
 ## Configuration
-Copy `azure-storage-monitor.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
+Copy `azure-storage-cost-analyzer.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
 
 ## Tests
 Static sanity tests live in the `tests/` directory:
@@ -72,4 +72,4 @@ Static sanity tests live in the `tests/` directory:
 They run in CI via `.github/workflows/lint.yml`. Add cloud-backed tests separately when credentials are available.
 
 ## Pipeline
-`.pipelines/azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.
+`.pipelines/azure-pipelines-storage-cost-analyzer.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.

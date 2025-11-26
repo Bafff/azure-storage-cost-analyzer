@@ -6,7 +6,7 @@ This guide describes how to set up Zabbix 7.0.1 using Docker Compose and test th
 
 The repository includes a single Zabbix template in YAML format:
 
-**templates/zabbix-template-azure-storage-monitor-7.0.yaml** - YAML format ⭐
+**templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml** - YAML format ⭐
 - Modern, clean YAML format
 - Includes all items, discovery rules, and triggers
 - Compact and maintainable (13K)
@@ -121,7 +121,7 @@ docker compose ps
 
 1. Navigate to **Data collection** → **Templates**
 2. Click **Import** button (top right)
-3. Choose file: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+3. Choose file: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 4. Configure import rules:
    - ✓ Create new templates
    - ✓ Update existing templates
@@ -138,7 +138,7 @@ docker compose ps
 1. Navigate to **Data collection** → **Hosts**
 2. Click **Create host** (top right)
 3. Configure host:
-   - **Host name**: `azure-storage-monitor`
+   - **Host name**: `azure-storage-cost-analyzer`
    - **Visible name**: `Azure Storage Cost Monitor`
    - **Groups**: Select or create `Linux servers`
    - **Interfaces**: Add agent interface (127.0.0.1:10050)
@@ -157,7 +157,7 @@ Use the Azure Storage Cost Analyzer script to send real data:
   --output-format json \
   --zabbix-send \
   --zabbix-server localhost \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 Or send test data manually:
@@ -165,10 +165,10 @@ Or send test data manually:
 ```bash
 # Create test data file
 cat > /tmp/zabbix_test.txt << 'EOF'
-azure-storage-monitor azure.storage.all.total_waste.monthly $(date +%s) 123.45
-azure-storage-monitor azure.storage.all.total_disks $(date +%s) 5
-azure-storage-monitor azure.storage.all.total_snapshots $(date +%s) 3
-azure-storage-monitor azure.storage.all.subscriptions_scanned $(date +%s) 2
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly $(date +%s) 123.45
+azure-storage-cost-analyzer azure.storage.all.total_disks $(date +%s) 5
+azure-storage-cost-analyzer azure.storage.all.total_snapshots $(date +%s) 3
+azure-storage-cost-analyzer azure.storage.all.subscriptions_scanned $(date +%s) 2
 EOF
 
 # Send using zabbix_sender
@@ -181,7 +181,7 @@ docker exec zabbix-server zabbix_sender -z localhost -p 10051 -i /tmp/zabbix_tes
 ### 6. Verify Data
 
 1. Navigate to **Monitoring** → **Hosts**
-2. Click on host: `azure-storage-monitor`
+2. Click on host: `azure-storage-cost-analyzer`
 3. Click **Latest data**
 4. You should see values for:
    - Total Monthly Waste (All Subscriptions)
@@ -274,8 +274,8 @@ docker compose down -v
 
 ## Configuration Files
 
-- `docker-compose.yml` - Docker Compose configuration for Zabbix 7.0.1
-- `templates/zabbix-template-azure-storage-monitor-7.0.yaml` - Zabbix template
+- `tests/docker-compose.yml` - Docker Compose configuration for Zabbix 7.0.1
+- `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml` - Zabbix template
 - `test-zabbix-integration.sh` - Automated integration test script
 
 ## Default Credentials
@@ -326,17 +326,17 @@ The script `azure-storage-cost-analyzer.sh` has built-in Zabbix integration:
   --zabbix-send \
   --zabbix-server localhost \
   --zabbix-port 10051 \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
-You can also configure Zabbix settings in `azure-storage-monitor.conf`:
+You can also configure Zabbix settings in `azure-storage-cost-analyzer.conf`:
 
 ```ini
 [zabbix]
 auto_send = true
 server = localhost
 port = 10051
-host = azure-storage-monitor
+host = azure-storage-cost-analyzer
 config_file = /etc/zabbix/zabbix_agentd.conf
 ```
 
@@ -344,7 +344,7 @@ config_file = /etc/zabbix/zabbix_agentd.conf
 
 For production use:
 
-1. **Change default passwords** in `docker-compose.yml`
+1. **Change default passwords** in `tests/docker-compose.yml`
 2. **Use HTTPS** - add nginx reverse proxy with SSL
 3. **Configure backups** for PostgreSQL data
 4. **Set up monitoring** for Zabbix containers themselves

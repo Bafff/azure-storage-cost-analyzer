@@ -1,9 +1,9 @@
 # Azure Storage Monitor Configuration File
 # Copy this file to one of the following locations (in priority order):
 #   1. Specify with --config <path>
-#   2. /etc/azure-storage-monitor/config.conf (system-wide)
-#   3. ~/.azure-storage-monitor.conf (user-specific)
-#   4. ./azure-storage-monitor.conf (local directory)
+#   2. /etc/azure-storage-cost-analyzer/config.conf (system-wide)
+#   3. ~/.azure-storage-cost-analyzer.conf (user-specific)
+#   4. ./azure-storage-cost-analyzer.conf (local directory)
 
 [azure]
 # Azure subscriptions to scan
@@ -36,7 +36,7 @@ enabled = true
 # Zabbix server configuration
 server = monitoring.company.com
 port = 10051
-hostname = azure-storage-monitor
+hostname = azure-storage-cost-analyzer
 
 # Auto-send metrics to Zabbix (true/false)
 auto_send = true
