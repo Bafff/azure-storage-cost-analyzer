@@ -7,7 +7,7 @@ CLI tooling to discover and quantify wasted Azure storage spend (unattached disk
 - Batch cost queries via Azure Cost Management REST API for speed and reliability.
 - Tag-based exclusion (`Resource-Next-Review-Date`) to defer approved resources until a review date.
 - Resource Group exclusion with age-based anomaly detection (e.g., exclude ephemeral Databricks resources, but alert on old orphaned ones).
-- Zabbix sender integration (metrics and LLD) and ready-to-run Azure Pipelines YAML.
+- Zabbix sender integration (aggregate metrics + resource-details text item) and ready-to-run Azure Pipelines YAML.
 - Configurable via INI (`azure-storage-cost-analyzer.conf.example`) or CLI flags.
 
 ## Quick Usage
@@ -51,7 +51,7 @@ chmod +x azure-storage-cost-analyzer.sh
 | `--exclude-rg-age-threshold-days N` | Override default 60-day threshold |
 | `--validate-costs` | Enable Cost Management permission check (disabled by default) |
 | `--sort-by-date` | Sort output by creation date instead of size |
-| `--output-format <json\|text>` | Output format (default: text) |
+| `--output-format <json\|text\|zabbix>` | Output format (default: text) |
 
 ## Prerequisites
 - Azure CLI authenticated (`az login`)
