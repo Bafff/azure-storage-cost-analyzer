@@ -114,6 +114,20 @@ zabbix_export:
           value: storage
         - tag: cloud
           value: azure
+      - uuid: 5fb28195fb0a4a08b10463b1d7de96b9
+        expression: nodata(/Ark Template Azure Storage Cost Monitor/azure.storage.all.total_disks,25h)=1
+        name: 'No disk data received for 25 hours'
+        priority: AVERAGE
+        manual_close: 'YES'
+        description: |
+          The azure-storage-cost-analyzer script has not sent disk count data in over 25 hours.
+          This indicates the scheduled pipeline may have failed or is not running.
+          Check Azure DevOps pipeline status.
+        tags:
+        - tag: scope
+          value: monitoring
+        - tag: cloud
+          value: azure
     - uuid: 355eb5cadf2d4b2695bf5e8b9c01e6dc
       name: Total Snapshots Count
       type: TRAP

@@ -161,6 +161,7 @@ Default triggers (thresholds controlled by macros):
 | Trigger | Severity | Default Threshold |
 |---------|----------|-------------------|
 | Unattached disks detected | Warning | > 0 disks (`{$DISK_THRESHOLD}`) |
+| No disk data received | Average | No data for 25 hours |
 | Snapshots detected | Warning | > 0 snapshots (`{$SNAPSHOT_THRESHOLD}`) |
 | High total waste | Warning | > $100/month (`{$WASTE_WARNING_THRESHOLD}`) |
 | Critical total waste | Average | > $200/month (`{$WASTE_CRITICAL_THRESHOLD}`) |
