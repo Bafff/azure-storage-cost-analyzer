@@ -49,7 +49,8 @@ CONFIG_REVIEW_DATE_TAG_NAME=""
 CONFIG_REVIEW_DATE_FORMAT=""
 CONFIG_EXCLUDE_PENDING_REVIEW=""
 CONFIG_EXCLUDE_RESOURCE_GROUPS=""
-CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS=""
+CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS=""
+CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS=""
 
 # Exit codes (standardized for monitoring integration)
 readonly EXIT_SUCCESS=0           # Success - no issues found or operation completed successfully
@@ -704,7 +705,8 @@ parse_config_file() {
                         review_date_format) CONFIG_REVIEW_DATE_FORMAT="$value" ;;
                         exclude_pending_review) CONFIG_EXCLUDE_PENDING_REVIEW="$value" ;;
                         exclude_resource_groups) CONFIG_EXCLUDE_RESOURCE_GROUPS="$value" ;;
-                        exclude_rg_age_threshold_days) CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS="$value" ;;
+                        exclude_rg_age_threshold_days_disks) CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS="$value" ;;
+                        exclude_rg_age_threshold_days_snapshots) CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS="$value" ;;
                     esac
                     ;;
             esac
@@ -1678,7 +1680,7 @@ collect_subscription_metrics() {
             "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -1757,7 +1759,7 @@ collect_subscription_metrics() {
             "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -3074,7 +3076,7 @@ analyze_unattached_disks_only() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         tag_filter_stats="$filtered_result"
@@ -3386,7 +3388,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}" 2>/dev/null)
 
         unattached_disks_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         disk_tag_filter_stats="$filtered_result"
@@ -3623,7 +3625,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_tag_filter_stats="$filtered_result"
@@ -4389,16 +4391,28 @@ main() {
                 CONFIG_EXCLUDE_RESOURCE_GROUPS="$2"
                 shift 2
                 ;;
-            --exclude-rg-age-threshold-days)
+            --exclude-rg-age-threshold-days-disks)
                 if [[ -z "${2:-}" ]]; then
-                    echo "Error: --exclude-rg-age-threshold-days requires a number"
+                    echo "Error: --exclude-rg-age-threshold-days-disks requires a number"
                     usage
                 fi
                 if [[ ! "$2" =~ ^[0-9]+$ ]]; then
-                    echo "Error: --exclude-rg-age-threshold-days must be a positive integer"
+                    echo "Error: --exclude-rg-age-threshold-days-disks must be a positive integer"
                     exit $EXIT_CONFIG_ERROR
                 fi
-                CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS="$2"
+                CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS="$2"
+                shift 2
+                ;;
+            --exclude-rg-age-threshold-days-snapshots)
+                if [[ -z "${2:-}" ]]; then
+                    echo "Error: --exclude-rg-age-threshold-days-snapshots requires a number"
+                    usage
+                fi
+                if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --exclude-rg-age-threshold-days-snapshots must be a positive integer"
+                    exit $EXIT_CONFIG_ERROR
+                fi
+                CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS="$2"
                 shift 2
                 ;;
             *)
@@ -4437,10 +4451,18 @@ main() {
     fi
 
     # Validate RG age threshold is numeric (if set via config)
-    if [[ -n "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-}" ]]; then
-        if [[ ! "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS}" =~ ^[0-9]+$ ]]; then
-            echo "Error: exclude_rg_age_threshold_days in config must be a positive integer"
-            echo "Found: '${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS}'"
+    if [[ -n "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-}" ]]; then
+        if [[ ! "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS}" =~ ^[0-9]+$ ]]; then
+            echo "Error: exclude_rg_age_threshold_days_disks in config must be a positive integer"
+            echo "Found: '${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS}'"
+            exit $EXIT_CONFIG_ERROR
+        fi
+    fi
+
+    if [[ -n "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-}" ]]; then
+        if [[ ! "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS}" =~ ^[0-9]+$ ]]; then
+            echo "Error: exclude_rg_age_threshold_days_snapshots in config must be a positive integer"
+            echo "Found: '${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS}'"
             exit $EXIT_CONFIG_ERROR
         fi
     fi

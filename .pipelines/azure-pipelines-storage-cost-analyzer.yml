@@ -39,6 +39,10 @@ variables:
     value: 'zabbix'
   - name: EXCLUDE_RESOURCE_GROUPS
     value: 'no-rg-excluded'  # Dummy default, override in variable group with real RG names
+  - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS
+    value: 7  # Disks older than this in excluded RGs will still be reported
+  - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS
+    value: 60  # Snapshots have longer lifecycle, use higher threshold
 
 stages:
   - stage: Analyze
@@ -99,6 +103,8 @@ stages:
                   --zabbix-host $(ZABBIX_HOST) \
                   --zabbix-port 10051 \
                   --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \
+                  --exclude-rg-age-threshold-days-disks $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS) \
+                  --exclude-rg-age-threshold-days-snapshots $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS) \
                   --quiet
               workingDirectory: '$(Build.SourcesDirectory)'
               failOnStandardError: false
@@ -122,6 +128,8 @@ stages:
                 echo "Zabbix Host: $(ZABBIX_HOST)"
                 echo "Scan Period: Last $(SCAN_DAYS) days"
                 echo "Excluded RGs: $(EXCLUDE_RESOURCE_GROUPS)"
+                echo "Excluded RG Age Threshold (disks): $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS) days"
+                echo "Excluded RG Age Threshold (snapshots): $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS) days"
                 echo ""
                 echo "Command executed:"
                 echo "  ./azure-storage-cost-analyzer.sh unused-report \\"
@@ -134,6 +142,8 @@ stages:
                 echo "    --zabbix-host $(ZABBIX_HOST) \\"
                 echo "    --zabbix-port 10051 \\"
                 echo "    --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \\"
+                echo "    --exclude-rg-age-threshold-days-disks $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS) \\"
+                echo "    --exclude-rg-age-threshold-days-snapshots $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS) \\"
                 echo "    --quiet"
                 echo "========================================"
 

@@ -95,24 +95,32 @@ exclude_pending_review = true
 # Example: databricks-rg,temp-rg,ephemeral-resources-rg
 exclude_resource_groups =
 
-# Age threshold in days - resources older than this will be included even
+# Age threshold in days - disks older than this will be included even
 # if they're in an excluded resource group (anomaly detection)
-# Default: 60 days
-exclude_rg_age_threshold_days = 60
+# Default: 7 days
+exclude_rg_age_threshold_days_disks = 7
+
+# Age threshold for snapshots - snapshots older than this will be included
+# even if they're in an excluded resource group (anomaly detection)
+# Default: 60 days (snapshots typically have longer lifecycles than disks)
+exclude_rg_age_threshold_days_snapshots = 60
 
 # Use Case Example:
 # Databricks creates/deletes disks regularly as part of normal operations.
 # These ephemeral disks are typically short-lived (hours/days).
-# However, if a Databricks disk is > 60 days old, it's likely orphaned/stuck
-# and needs attention, so it will still be included in alerts.
+# However, if a disk is > 7 days old or a snapshot is > 60 days old,
+# it's likely orphaned/stuck and needs attention.
 #
 # Example configuration for Databricks:
 #   exclude_resource_groups = databricks-managed-rg,databricks-compute-rg
-#   exclude_rg_age_threshold_days = 60
+#   exclude_rg_age_threshold_days_disks = 7
+#   exclude_rg_age_threshold_days_snapshots = 60
 #
 # Result:
-#   - Databricks disks < 60 days old: EXCLUDED from alerts (normal operation)
-#   - Databricks disks >= 60 days old: INCLUDED in alerts (potential issue)
+#   - Databricks disks < 7 days old: EXCLUDED from alerts (normal operation)
+#   - Databricks disks >= 7 days old: INCLUDED in alerts (potential issue)
+#   - Databricks snapshots < 60 days old: EXCLUDED from alerts
+#   - Databricks snapshots >= 60 days old: INCLUDED in alerts (potential issue)
 #   - All other RG resources: INCLUDED normally
 
 # ============================================================================

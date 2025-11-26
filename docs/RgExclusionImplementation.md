@@ -14,8 +14,16 @@ This feature allows excluding specific Resource Groups from cost analysis and al
 
 Databricks creates and deletes managed disks regularly as part of normal cluster operations. These ephemeral resources:
 - Are created/deleted frequently (hours/days)
-- Don't need alerts for recent resources (<60 days)
-- **BUT** if a Databricks disk is >60 days old, it's likely orphaned and needs investigation
+- Don't need alerts for recent disks (<7 days) or snapshots (<60 days)
+- **BUT** if a Databricks disk is >7 days old or a snapshot is >60 days old, it's likely orphaned and needs investigation
+
+### Separate Thresholds for Disks and Snapshots
+
+Disks and snapshots have different lifecycles:
+- **Disks** are typically short-lived in ephemeral RGs (hours/days)
+- **Snapshots** may legitimately exist longer for backup purposes
+
+The feature supports separate age thresholds for each resource type.
 
 ## Configuration
 
@@ -26,9 +34,13 @@ Databricks creates and deletes managed disks regularly as part of normal cluster
 # Comma-separated list of resource groups to exclude
 exclude_resource_groups = databricks-rg,temp-rg
 
-# Age threshold in days - resources older than this will be included
+# Age threshold for disks - disks older than this will be included
 # even if they're in an excluded RG (anomaly detection)
-exclude_rg_age_threshold_days = 30
+exclude_rg_age_threshold_days_disks = 7
+
+# Age threshold for snapshots - snapshots older than this will be included
+# even if they're in an excluded RG (anomaly detection)
+exclude_rg_age_threshold_days_snapshots = 60
 ```
 
 ### CLI Flags
@@ -38,18 +50,20 @@ exclude_rg_age_threshold_days = 30
   --subscriptions <sub-id> \
   --days 30 \
   --exclude-resource-groups databricks-rg,temp-rg \
-  --exclude-rg-age-threshold-days 30
+  --exclude-rg-age-threshold-days-disks 7 \
+  --exclude-rg-age-threshold-days-snapshots 60
 ```
 
 ## Implementation Details
 
 ### 1. Configuration Variables
 
-**File:** `azure-storage-cost-analyzer.sh` (Lines 49-50)
+**File:** `azure-storage-cost-analyzer.sh`
 
 ```bash
-CONFIG_EXCLUDE_RESOURCE_GROUPS=""        # Comma-separated RG names
-CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS=""  # Age threshold in days
+CONFIG_EXCLUDE_RESOURCE_GROUPS=""              # Comma-separated RG names
+CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS=""  # Age threshold for disks (default: 7)
+CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS=""  # Age threshold for snapshots (default: 60)
 ```
 
 ### 2. Core Functions
@@ -172,40 +186,55 @@ in only one list.
 **Configuration:**
 ```ini
 exclude_resource_groups = databricks-rg
-exclude_rg_age_threshold_days = 30
+exclude_rg_age_threshold_days_disks = 7
+exclude_rg_age_threshold_days_snapshots = 60
 ```
 
-**Resources:**
+**Disks:**
 | Name | RG | Age (days) | Action | Reason |
 |------|-----|-----------|--------|--------|
-| databricks-disk-1 | databricks-rg | 2 | ❌ EXCLUDED | Recent ephemeral resource |
-| databricks-disk-2 | databricks-rg | 15 | ❌ EXCLUDED | Recent ephemeral resource |
+| databricks-disk-1 | databricks-rg | 2 | ❌ EXCLUDED | Recent ephemeral disk |
+| databricks-disk-2 | databricks-rg | 5 | ❌ EXCLUDED | Recent ephemeral disk |
 | prod-disk-1 | prod-rg | 5 | ✅ INCLUDED | Not in exclusion list |
 
-### Example 2: Old Databricks Resource (Anomaly Detected)
+**Snapshots:**
+| Name | RG | Age (days) | Action | Reason |
+|------|-----|-----------|--------|--------|
+| databricks-snap-1 | databricks-rg | 30 | ❌ EXCLUDED | Recent ephemeral snapshot |
+| databricks-snap-2 | databricks-rg | 45 | ❌ EXCLUDED | Recent ephemeral snapshot |
+
+### Example 2: Old Databricks Resources (Anomaly Detected)
 
 **Configuration:**
 ```ini
 exclude_resource_groups = databricks-rg
-exclude_rg_age_threshold_days = 30
+exclude_rg_age_threshold_days_disks = 7
+exclude_rg_age_threshold_days_snapshots = 60
 ```
 
-**Resources:**
+**Disks:**
 | Name | RG | Age (days) | Action | Reason |
 |------|-----|-----------|--------|--------|
-| databricks-disk-1 | databricks-rg | 2 | ❌ EXCLUDED | Recent ephemeral resource |
-| databricks-disk-stuck | databricks-rg | 45 | ✅ INCLUDED | **Anomaly: Too old for ephemeral** |
-| prod-disk-1 | prod-rg | 5 | ✅ INCLUDED | Not in exclusion list |
+| databricks-disk-1 | databricks-rg | 2 | ❌ EXCLUDED | Recent ephemeral disk |
+| databricks-disk-stuck | databricks-rg | 10 | ✅ INCLUDED | **Anomaly: Too old (>7 days)** |
+
+**Snapshots:**
+| Name | RG | Age (days) | Action | Reason |
+|------|-----|-----------|--------|--------|
+| databricks-snap-1 | databricks-rg | 30 | ❌ EXCLUDED | Recent ephemeral snapshot |
+| databricks-snap-stuck | databricks-rg | 90 | ✅ INCLUDED | **Anomaly: Too old (>60 days)** |
 
 ### Example 3: Multiple Excluded RGs
 
 **Configuration:**
 ```ini
 exclude_resource_groups = databricks-rg,temp-rg,ephemeral-rg
-exclude_rg_age_threshold_days = 60
+exclude_rg_age_threshold_days_disks = 7
+exclude_rg_age_threshold_days_snapshots = 60
 ```
 
-All resources in `databricks-rg`, `temp-rg`, and `ephemeral-rg` are excluded if <60 days old, included if >=60 days old.
+- **Disks** in excluded RGs: excluded if <7 days old, included if >=7 days old
+- **Snapshots** in excluded RGs: excluded if <60 days old, included if >=60 days old
 
 ## Integration Points
 
@@ -223,7 +252,7 @@ filtered_result=$(filter_resources_by_tags \
     "false")
 ```
 
-**After:**
+**After (for disks):**
 ```bash
 filtered_result=$(filter_resources_by_tags \
     "$resources_json" \
@@ -232,7 +261,19 @@ filtered_result=$(filter_resources_by_tags \
     "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
     "false" \
     "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
-    "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS:-60}")
+    "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}")
+```
+
+**After (for snapshots):**
+```bash
+filtered_result=$(filter_resources_by_tags \
+    "$snapshots_json" \
+    "$tag_name" \
+    "${CONFIG_REVIEW_DATE_FORMAT:-YYYY.MM.DD}" \
+    "${CONFIG_EXCLUDE_PENDING_REVIEW:-false}" \
+    "false" \
+    "${CONFIG_EXCLUDE_RESOURCE_GROUPS:-}" \
+    "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-60}}")
 ```
 
 **Updated Locations:**
@@ -256,16 +297,17 @@ filtered_result=$(filter_resources_by_tags \
   --days 30 \
   --exclude-resource-groups databricks-rg
 ```
-**Expected:** Databricks resources <60 days excluded
+**Expected:** Databricks disks <7 days excluded, snapshots <60 days excluded
 
-### Test 3: Custom Threshold
+### Test 3: Custom Thresholds
 ```bash
 ./azure-storage-cost-analyzer.sh unused-report \
   --days 30 \
   --exclude-resource-groups temp-rg \
-  --exclude-rg-age-threshold-days 7
+  --exclude-rg-age-threshold-days-disks 3 \
+  --exclude-rg-age-threshold-days-snapshots 30
 ```
-**Expected:** temp-rg resources <7 days excluded, >=7 days included
+**Expected:** temp-rg disks <3 days excluded, snapshots <30 days excluded
 
 ### Test 4: Conflict Detection
 ```bash
@@ -301,6 +343,8 @@ Potential future improvements (not currently implemented):
    azure.storage.disks.excluded_rg.old.count
    azure.storage.disks.excluded_rg.old.cost
    ```
+
+✅ **Implemented:** Separate thresholds for disks and snapshots (see Configuration section above)
 
 ## Related Documentation
 

@@ -47,8 +47,9 @@ chmod +x azure-storage-cost-analyzer.sh
 | `--subscriptions <id\|all>` | Single subscription ID or `all` for multi-subscription |
 | `--days N` | Analyze last N days (alternative: `--last-month`) |
 | `--skip-tagged` | Exclude resources with future `Resource-Next-Review-Date` tags |
-| `--exclude-rgs "rg1,rg2"` | Exclude resource groups (resources <60 days old) |
-| `--exclude-rg-age-threshold-days N` | Override default 60-day threshold |
+| `--exclude-rgs "rg1,rg2"` | Exclude resource groups from analysis |
+| `--exclude-rg-age-threshold-days-disks N` | Disk age threshold in excluded RGs (default: 7 days) |
+| `--exclude-rg-age-threshold-days-snapshots N` | Snapshot age threshold in excluded RGs (default: 60 days) |
 | `--validate-costs` | Enable Cost Management permission check (disabled by default) |
 | `--sort-by-date` | Sort output by creation date instead of size |
 | `--output-format <json\|text\|zabbix>` | Output format (default: text) |
