@@ -99,7 +99,7 @@ zabbix_export:
       - tag: component
         value: storage
       triggers:
-      - uuid: 3b8f9a2c1d4e5f6a7b8c9d0e1f2a3b4c
+      - uuid: dca5aa4891b34c4eacfc20e795c962f9
         expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_disks)>{$DISK_THRESHOLD}
         name: 'Unattached disks detected: {ITEM.LASTVALUE}'
         priority: WARNING
@@ -128,7 +128,7 @@ zabbix_export:
       - tag: component
         value: storage
       triggers:
-      - uuid: 4c9f0b3d2e5f6a7b8c9d0e1f2a3b4c5d
+      - uuid: 2a3de244a9ec4ba1aa060b5695b9692a
         expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_snapshots)>{$SNAPSHOT_THRESHOLD}
         name: 'Snapshots detected: {ITEM.LASTVALUE}'
         priority: WARNING
@@ -260,7 +260,7 @@ zabbix_export:
         tags:
         - tag: scope
           value: monitoring
-    - uuid: 5d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a
+    - uuid: 100ba7b5bb0c41539eedf286a25be226
       name: Resource Details
       type: TRAP
       key: azure.storage.all.resource_details
