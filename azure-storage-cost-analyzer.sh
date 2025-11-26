@@ -20,10 +20,11 @@
 
 set -euo pipefail
 
-# Default values
-# Default values
-# Note: Hardcoded defaults have been removed for production safety.
-# Users must provide arguments or rely on current Azure context.
+# Default placeholders (historical/default single-resource flow under review for deprecation)
+# Leave empty to force explicit values; see TODO near historical command handling.
+DEFAULT_SUBSCRIPTION_ID=""
+DEFAULT_RESOURCE_GROUP=""
+DEFAULT_PG_DISK=""
 
 
 # Configuration file variables (will be populated by load_config)
@@ -4623,12 +4624,23 @@ main() {
             analyze_multiple_resources "${snapshot_ids[@]}" "$subscription_id" "$start_date" "$end_date"
             ;;
         "historical")
+            # TODO: This flow is slated for review/deprecation; historically used to view SSD transaction SKUs.
+            if [[ -z "$DEFAULT_PG_DISK" || -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                echo "Error: historical flow requires DEFAULT_PG_DISK and DEFAULT_RESOURCE_GROUP (pending review/deprecation)."
+                echo "Please supply an explicit resource identifier instead."
+                exit $EXIT_CONFIG_ERROR
+            fi
             local pg_resource_id
             pg_resource_id=$(construct_disk_resource_id "$DEFAULT_PG_DISK" "$subscription_id" "$DEFAULT_RESOURCE_GROUP")
             analyze_historical_costs "$pg_resource_id" "$subscription_id"
             ;;
         "")
             # Use PostgreSQL default
+            if [[ -z "$DEFAULT_PG_DISK" || -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                echo "Error: default single-resource flow requires DEFAULT_PG_DISK and DEFAULT_RESOURCE_GROUP (pending review/deprecation)."
+                echo "Provide a resource identifier or configure defaults before running."
+                exit $EXIT_CONFIG_ERROR
+            fi
             local pg_resource_id
             pg_resource_id=$(construct_disk_resource_id "$DEFAULT_PG_DISK" "$subscription_id" "$DEFAULT_RESOURCE_GROUP")
             if [[ -z "$start_date" || -z "$end_date" ]]; then
@@ -4650,6 +4662,11 @@ main() {
                 resource_id="$resource_identifier"
             elif [[ "$resource_identifier" =~ ^pvc- ]] || [[ "$resource_identifier" =~ ^snapshot- ]] || [[ ${#resource_identifier} -gt 10 ]]; then
                 # Disk or snapshot name provided - construct full resource ID
+                if [[ -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                    echo "Error: DEFAULT_RESOURCE_GROUP is not set; required to build resource ID from name."
+                    echo "Pass a full resource ID or configure DEFAULT_RESOURCE_GROUP."
+                    exit $EXIT_CONFIG_ERROR
+                fi
                 if [[ "$resource_identifier" =~ ^snapshot- ]]; then
                     resource_id="/subscriptions/$subscription_id/resourceGroups/$DEFAULT_RESOURCE_GROUP/providers/Microsoft.Compute/snapshots/$resource_identifier"
                 else
