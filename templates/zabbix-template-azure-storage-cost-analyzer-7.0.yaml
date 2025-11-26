@@ -112,7 +112,7 @@ zabbix_export:
           View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
           Or use the link in the trigger's Links section to see detailed disk/snapshot information.
 
-          Action: Review and either delete or attach these disks to reduce costs.
+          Action: Delete or attach disks, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
         tags:
         - tag: scope
           value: storage
@@ -159,7 +159,7 @@ zabbix_export:
           View Resource Details: Go to Monitoring → Latest data → filter by "resource_details"
           Or use the link in the trigger's Links section to see detailed disk/snapshot information.
 
-          Action: Review and either delete old snapshots or archive them to reduce costs.
+          Action: Delete unneeded snapshots, or add Resource-Next-Review-Date tag (YYYY.MM.DD) to defer.
         tags:
         - tag: scope
           value: storage
