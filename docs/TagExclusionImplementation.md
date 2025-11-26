@@ -270,7 +270,7 @@ echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $timestamp $
 
 ## 📝 Config File Example
 
-Update `azure-storage-monitor.conf.example`:
+Update `azure-storage-cost-analyzer.conf.example`:
 
 ```ini
 [exclusions]

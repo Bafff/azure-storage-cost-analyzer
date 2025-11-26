@@ -5,12 +5,12 @@
 # Trigger: Manual or scheduled
 #
 # Prerequisites:
-#   1. Azure service connection with Reader access to all subscriptions
+#   1. Azure service connection with Reader + Cost Management Reader access to all subscriptions
 #   2. Variable group 'zabbix-rs-credentials' with ZABBIX_SERVER variable
 #   3. Zabbix server accessible on port 10051 from Azure DevOps agents
-#   4. Zabbix host 'azure-storage-monitor' configured with template
+#   4. Zabbix host 'azure-storage-cost-analyzer' configured with template
 
-name: Azure-Storage-Waste-Monitor-$(Date:yyyyMMdd)-$(Rev:r)
+name: Azure-Storage-Cost-Analyzer-$(Date:yyyyMMdd)-$(Rev:r)
 
 trigger: none  # Disable CI triggers (manual or scheduled only)
 
@@ -23,17 +23,22 @@ schedules:
         - feature/azure-storage-cost-analyzer-migration
     always: true  # Run even if no code changes
 
+# Self-hosted Linux agent pool (update name to your pool). For hosted agents, swap this block for: `pool: { vmImage: "ubuntu-latest" }`
 pool:
-  vmImage: 'ubuntu-latest'  # Ubuntu agents have Azure CLI pre-installed
+  name: 'ArkadiumOnline'
+  demands:
+    - Agent.OS -equals Linux
 
 variables:
-  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER
+  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER, optionally EXCLUDE_RESOURCE_GROUPS
   - name: ZABBIX_HOST
-    value: 'azure-storage-monitor'
+    value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30  # Analyze last 30 days
-  - name: OUTPUT_DIR
-    value: '$(Build.ArtifactStagingDirectory)/reports'
+  - name: AZURE_SERVICE_CONNECTION
+    value: 'zabbix'
+  - name: EXCLUDE_RESOURCE_GROUPS
+    value: 'no-rg-excluded'  # Dummy default, override in variable group with real RG names
 
 stages:
   - stage: Analyze
@@ -78,52 +83,29 @@ stages:
               # NOTE: This is your Azure DevOps SERVICE CONNECTION name (NOT an Azure subscription ID)
               # The script will scan ALL Azure subscriptions that this service connection has access to
               # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
-              azureSubscription: 'Azure-Service-Connection'  # ⚠️ UPDATE THIS to your service connection name
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
-              scriptLocation: 'scriptPath'
-              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
-              arguments: |
-                unused-report \
-                --subscriptions all \
-                --days $(SCAN_DAYS) \
-                --output-format json \
-                --zabbix-send \
-                --zabbix-server $(ZABBIX_SERVER) \
-                --zabbix-host $(ZABBIX_HOST) \
-                --zabbix-port 10051 \
-                --quiet
+              scriptLocation: 'inlineScript'
+              # --skip-tagged: Exclude resources with valid future Resource-Next-Review-Date tags
+              # This allows teams to mark resources as "reviewed" and avoid alerts until the review date expires
+              inlineScript: |
+                ./azure-storage-cost-analyzer.sh unused-report \
+                  --subscriptions all \
+                  --days $(SCAN_DAYS) \
+                  --output-format json \
+                  --skip-tagged \
+                  --zabbix-send \
+                  --zabbix-server $(ZABBIX_SERVER) \
+                  --zabbix-host $(ZABBIX_HOST) \
+                  --zabbix-port 10051 \
+                  --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \
+                  --quiet
               workingDirectory: '$(Build.SourcesDirectory)'
-              failOnStandardError: true
+              failOnStandardError: false
             env:
               AZURE_CLI_TIMEOUT: 300  # 5 minutes timeout for Azure CLI commands
             continueOnError: false
             condition: succeeded()
-
-          - task: Bash@3
-            displayName: 'Save JSON report artifact'
-            condition: always()
-            inputs:
-              targetType: 'inline'
-              script: |
-                # Create output directory
-                mkdir -p $(OUTPUT_DIR)
-
-                # Copy any generated JSON reports
-                if ls *.json 1> /dev/null 2>&1; then
-                  cp *.json $(OUTPUT_DIR)/
-                  echo "JSON reports copied to artifacts"
-                  ls -lh $(OUTPUT_DIR)/
-                else
-                  echo "No JSON reports found"
-                fi
-
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish storage cost reports'
-            condition: always()
-            inputs:
-              PathtoPublish: '$(OUTPUT_DIR)'
-              ArtifactName: 'storage-cost-reports-$(Build.BuildNumber)'
-              publishLocation: 'Container'
 
           - task: Bash@3
             displayName: 'Summary Report'
@@ -139,14 +121,21 @@ stages:
                 echo "Zabbix Server: $(ZABBIX_SERVER)"
                 echo "Zabbix Host: $(ZABBIX_HOST)"
                 echo "Scan Period: Last $(SCAN_DAYS) days"
+                echo "Excluded RGs: $(EXCLUDE_RESOURCE_GROUPS)"
+                echo ""
+                echo "Command executed:"
+                echo "  ./azure-storage-cost-analyzer.sh unused-report \\"
+                echo "    --subscriptions all \\"
+                echo "    --days $(SCAN_DAYS) \\"
+                echo "    --output-format json \\"
+                echo "    --skip-tagged \\"
+                echo "    --zabbix-send \\"
+                echo "    --zabbix-server $(ZABBIX_SERVER) \\"
+                echo "    --zabbix-host $(ZABBIX_HOST) \\"
+                echo "    --zabbix-port 10051 \\"
+                echo "    --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \\"
+                echo "    --quiet"
                 echo "========================================"
-
-                # Show quick summary if JSON exists
-                if [ -f "unused-resources-report-*.json" ]; then
-                  echo ""
-                  echo "Quick Summary:"
-                  jq -r '"Total Waste: $\(.aggregated_metrics.total_waste_monthly_usd)/month (\(.aggregated_metrics.total_waste_annual_usd)/year)\nUnattached Disks: \(.aggregated_metrics.total_unattached_disks)\nSnapshots: \(.aggregated_metrics.total_snapshots)\nSubscriptions: \(.subscriptions_scanned)"' unused-resources-report-*.json || true
-                fi
 
 # Alternative: Single subscription scan (uncomment if needed)
 #      - job: ScanSingleSubscription

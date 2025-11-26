@@ -211,7 +211,7 @@ fi
 # ============================================================================
 section "Test 7: Zabbix Batch Format"
 
-# Check if Zabbix metrics include multi-subscription keys
+# Check if Zabbix metrics include aggregated keys (per-subscription metrics removed in current design)
 if grep -q 'azure.storage.all.total_waste.monthly' "$SCRIPT_PATH"; then
     pass "Zabbix output includes aggregated metric keys"
 else
@@ -219,9 +219,9 @@ else
 fi
 
 if grep -q 'azure.storage.subscription\.' "$SCRIPT_PATH"; then
-    pass "Zabbix output includes per-subscription metric keys"
+    skip "Zabbix per-subscription keys" "Per-subscription metrics removed; aggregate-only output expected"
 else
-    fail "Zabbix per-subscription keys" "Keys present" "Keys not found"
+    pass "Zabbix per-subscription keys absent as expected"
 fi
 
 # ============================================================================

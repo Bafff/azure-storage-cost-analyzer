@@ -7,8 +7,8 @@ CLI tooling to discover and quantify wasted Azure storage spend (unattached disk
 - Batch cost queries via Azure Cost Management REST API for speed and reliability.
 - Tag-based exclusion (`Resource-Next-Review-Date`) to defer approved resources until a review date.
 - Resource Group exclusion with age-based anomaly detection (e.g., exclude ephemeral Databricks resources, but alert on old orphaned ones).
-- Zabbix sender integration (metrics and LLD) and ready-to-run Azure Pipelines YAML.
-- Configurable via INI (`azure-storage-monitor.conf.example`) or CLI flags.
+- Zabbix sender integration (aggregate metrics + resource-details text item) and ready-to-run Azure Pipelines YAML.
+- Configurable via INI (`azure-storage-cost-analyzer.conf.example`) or CLI flags.
 
 ## Quick Usage
 ```bash
@@ -31,7 +31,7 @@ chmod +x azure-storage-cost-analyzer.sh
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.example.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 
 # With exclusions (exclude tagged resources + specific RGs)
 ./azure-storage-cost-analyzer.sh unused-report \
@@ -51,7 +51,7 @@ chmod +x azure-storage-cost-analyzer.sh
 | `--exclude-rg-age-threshold-days N` | Override default 60-day threshold |
 | `--validate-costs` | Enable Cost Management permission check (disabled by default) |
 | `--sort-by-date` | Sort output by creation date instead of size |
-| `--output-format <json\|text>` | Output format (default: text) |
+| `--output-format <json\|text\|zabbix>` | Output format (default: text) |
 
 ## Prerequisites
 - Azure CLI authenticated (`az login`)
@@ -61,7 +61,7 @@ chmod +x azure-storage-cost-analyzer.sh
 - **Platform:** Works on Linux and macOS (bash 3.2+ compatible)
 
 ## Configuration
-Copy `azure-storage-monitor.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
+Copy `azure-storage-cost-analyzer.conf.example` and adjust sections `[azure]`, `[output]`, `[zabbix]`, `[thresholds]`, `[advanced]`, `[exclusions]`. CLI flags override config values.
 
 ## Tests
 Static sanity tests live in the `tests/` directory:
@@ -72,4 +72,8 @@ Static sanity tests live in the `tests/` directory:
 They run in CI via `.github/workflows/lint.yml`. Add cloud-backed tests separately when credentials are available.
 
 ## Pipeline
-`.pipelines/azure-pipelines-storage-monitor.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.
+`.pipelines/azure-pipelines-storage-cost-analyzer.yml` targets a **self-hosted Linux agent pool** (see `pool.name`). To run it successfully:
+- Point `pool.name` to your self-hosted pool that meets the `Agent.OS -equals Linux` demand and has outbound access to your Zabbix server.
+- Ensure the agent can `sudo apt-get install zabbix-sender jq bc coreutils` (or preinstall those tools).
+- Set the Azure service connection name and Zabbix variables (`ZABBIX_SERVER`, `ZABBIX_HOST`, `SCAN_DAYS`).
+- Prefer hosted agents? Replace the entire `pool` block with `vmImage: 'ubuntu-latest'` before queuing.

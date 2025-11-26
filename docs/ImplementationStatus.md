@@ -19,8 +19,8 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 | Zabbix sender integration | ✅ Fully implemented | Script (line 1390-1504) |
 | JSON output format | ✅ Fully implemented | Script (line 1248-1294) |
 | Zabbix output format | ✅ Fully implemented | Script (line 1297-1326) |
-| Zabbix 7.0.5 template | ✅ Created | `templates/zabbix-template-azure-storage-monitor-7.0.yaml` |
-| Azure DevOps pipeline | ✅ Created | `.pipelines/azure-pipelines-storage-monitor.yml` |
+| Zabbix 7.0.5 template | ✅ Created | `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml` |
+| Azure DevOps pipeline | ✅ Created | `.pipelines/azure-pipelines-storage-cost-analyzer.yml` |
 | Documentation | ✅ Complete | `ZabbixIntegrationGuide.md` |
 
 ---
@@ -32,18 +32,18 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 1. Log in to Zabbix frontend (7.0.5)
 2. Go to **Configuration → Templates**
 3. Click **Import**
-4. Upload: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
-5. Create host `azure-storage-monitor`:
-   - Template: "Azure Storage Cost Monitor"
+4. Upload: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
+5. Create host `azure-storage-cost-analyzer`:
+   - Template: "Ark Template Azure Storage Cost Monitor"
    - Interface: Trapper (port 10051)
-   - Host groups: Templates/Cloud
+   - Host groups: Cloud/Azure
 
 **Verification:**
 ```bash
 # Check host exists
 curl -s -X POST http://your-zabbix/api_jsonrpc.php \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"host.get","params":{"filter":{"host":"azure-storage-monitor"}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"host.get","params":{"filter":{"host":"azure-storage-cost-analyzer"}},"id":1}'
 ```
 
 ### Step 2: Configure Azure DevOps (10 minutes)
@@ -52,20 +52,26 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    - Navigate to: Pipelines → Library → Variable groups
    - Add variable: `ZABBIX_SERVER` = `your-zabbix-server.company.com`
 
-2. **Verify Service Principal** has Reader role:
+2. **Verify Service Principal** has Reader and Cost Management Reader roles:
    ```bash
    # Check current assignments
    az role assignment list --assignee <service-principal-app-id> --output table
 
-   # Grant if missing
+   # Grant Reader if missing
    az role assignment create \
      --assignee <app-id> \
      --role "Reader" \
      --scope "/subscriptions/<sub-id>"
+
+   # Grant Cost Management Reader for cost data access
+   az role assignment create \
+     --assignee <app-id> \
+     --role "Cost Management Reader" \
+     --scope "/subscriptions/<sub-id>"
    ```
 
 3. **Import Pipeline**:
-   - Copy `.pipelines/azure-pipelines-storage-monitor.yml` to your repo
+   - Copy `.pipelines/azure-pipelines-storage-cost-analyzer.yml` to your repo
    - Update line 31: `azureSubscription: 'YOUR-SERVICE-CONNECTION-NAME'`
    - Commit and push
 
@@ -73,7 +79,7 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    - Pipelines → New Pipeline
    - Select your repo
    - Choose "Existing Azure Pipelines YAML file"
-   - Select `.pipelines/azure-pipelines-storage-monitor.yml`
+   - Select `.pipelines/azure-pipelines-storage-cost-analyzer.yml`
 
 ### Step 3: Test Run (2 minutes)
 
@@ -99,19 +105,19 @@ az login
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor \
+  --zabbix-host azure-storage-cost-analyzer \
   --quiet
 ```
 
 **Pipeline Test:**
 - Go to Azure DevOps → Pipelines
-- Select "Azure-Storage-Waste-Monitor"
+- Select "Azure-Storage-Cost-Analyzer"
 - Click "Run pipeline"
 - Wait ~5-10 minutes (depending on subscription count)
 
 **Verify in Zabbix:**
 - Monitoring → Latest data
-- Filter by host: `azure-storage-monitor`
+- Filter by host: `azure-storage-cost-analyzer`
 - Check items:
   - `azure.storage.all.total_waste.monthly`
   - `azure.storage.all.total_disks`
@@ -166,14 +172,19 @@ Script → zabbix_sender → Zabbix Trapper (10051) → Template → Triggers
 | `azure.storage.all.total_waste.monthly` | Float | 280.50 |
 | `azure.storage.all.total_disks` | Int | 12 |
 | `azure.storage.all.total_snapshots` | Int | 89 |
+| `azure.storage.all.invalid_tags` | Int | 2 |
+| `azure.storage.all.excluded_pending_review` | Int | 5 |
+| `azure.storage.all.subscriptions_scanned` | Int | 3 |
+| `azure.storage.all.resource_details` | Text | [INVALID TAG]... then DISK \| ... then SNAPSHOT \| ... |
 | `azure.storage.script.last_run_timestamp` | Unixtime | 1732114800 |
-| `azure.storage.subscription.waste_monthly[sub-id]` | Float | 45.60 |
+| `azure.storage.script.execution_time_seconds` | Int | 135 |
+| `azure.storage.script.last_run_status` | Int | 0 (success) |
 
 **Format (Zabbix sender):**
 ```
-azure-storage-monitor azure.storage.all.total_waste.monthly 1732114800 280.50
-azure-storage-monitor azure.storage.all.total_disks 1732114800 12
-azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114800
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 280.50
+azure-storage-cost-analyzer azure.storage.all.total_disks 12
+azure-storage-cost-analyzer azure.storage.script.last_run_timestamp 1732114800
 ```
 
 **Send Methods:**
@@ -182,7 +193,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
    ```bash
    --zabbix-send \
    --zabbix-server monitoring.company.com \
-   --zabbix-host azure-storage-monitor
+   --zabbix-host azure-storage-cost-analyzer
    ```
 
 2. **Manual send from JSON:**
@@ -250,7 +261,7 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 
 ## Zabbix Template Details
 
-**File:** `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+**File:** `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 
 ### Items (Aggregated)
 
@@ -258,38 +269,39 @@ azure-storage-monitor azure.storage.script.last_run_timestamp 1732114800 1732114
 - ✅ Total Unattached Disks Count
 - ✅ Total Snapshots Count
 - ✅ Subscriptions Scanned
+- ✅ Invalid Review Tags
+- ✅ Excluded Pending Review
+- ✅ Resource Details (TEXT - disk/snapshot names and RGs)
 - ✅ Last Run Timestamp
 - ✅ Script Execution Time
 - ✅ Last Run Status
 
-### Discovery Rules
+### Template Macros
 
-**Azure Subscriptions Discovery:**
-- Key: `azure.storage.discovery.subscriptions`
-- Discovers all subscriptions dynamically
-- Creates per-subscription items automatically
-
-**Item Prototypes:**
-- `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]`
-- `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]`
-- `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]`
+| Macro | Default | Description |
+|-------|---------|-------------|
+| `{$DISK_THRESHOLD}` | 0 | Alert when disk count exceeds this |
+| `{$SNAPSHOT_THRESHOLD}` | 0 | Alert when snapshot count exceeds this |
+| `{$WASTE_WARNING_THRESHOLD}` | 100 | Warning threshold (USD/month) |
+| `{$WASTE_CRITICAL_THRESHOLD}` | 200 | Critical threshold (USD/month) |
 
 ### Triggers
 
 | Trigger | Severity | Condition |
 |---------|----------|-----------|
-| High total waste | Warning | > $500/month |
-| Critical total waste | High | > $1000/month |
+| Unattached disks detected | Warning | > `{$DISK_THRESHOLD}` |
+| Snapshots detected | Warning | > `{$SNAPSHOT_THRESHOLD}` |
+| High total waste | Warning | > `{$WASTE_WARNING_THRESHOLD}` |
+| Critical total waste | Average | > `{$WASTE_CRITICAL_THRESHOLD}` |
+| Invalid review tags | Warning | > 0 |
 | Script hasn't run | Average | 24 hours |
-| High subscription waste | Warning | > $100/month (per sub) |
-| Critical subscription waste | High | > $250/month (per sub) |
-| Many unattached disks | Warning | > 20 disks (per sub) |
+| Script execution failed | Warning | Status > 0 |
 
 ---
 
 ## Azure DevOps Pipeline Details
 
-**File:** `.pipelines/azure-pipelines-storage-monitor.yml`
+**File:** `.pipelines/azure-pipelines-storage-cost-analyzer.yml`
 
 ### Schedule
 - **Daily:** 2 AM UTC (`cron: "0 2 * * *"`)
@@ -337,9 +349,9 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
 ### Before Production Deployment
 
 - [ ] Zabbix 7.0.5 template imported
-- [ ] Zabbix host `azure-storage-monitor` created and linked to template
+- [ ] Zabbix host `azure-storage-cost-analyzer` created and linked to template
 - [ ] Variable group `zabbix-rs-credentials` created with `ZABBIX_SERVER`
-- [ ] Azure service connection has Reader role on all subscriptions
+- [ ] Azure service connection has Reader + Cost Management Reader roles on all subscriptions
 - [ ] Pipeline YAML updated with correct service connection name
 - [ ] Manual test run completed successfully
 - [ ] Metrics visible in Zabbix (Latest data)
@@ -368,11 +380,11 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
   --output-format json \
   --zabbix-send \
   --zabbix-server your-zabbix-server.com \
-  --zabbix-host azure-storage-monitor \
+  --zabbix-host azure-storage-cost-analyzer \
   --verbose  # See what's being sent
 
 # Test 4: Verify zabbix_sender works
-echo "azure-storage-monitor azure.storage.test.item $(date +%s) 123" | \
+echo "azure-storage-cost-analyzer azure.storage.test.item $(date +%s) 123" | \
   zabbix_sender -z your-zabbix-server.com -p 10051 -i -
 ```
 
@@ -410,10 +422,16 @@ tail -f /var/log/zabbix/zabbix_server.log | grep azure-storage
 # Check current permissions
 az role assignment list --assignee <app-id> --output table
 
-# Grant Reader role
+# Grant Reader role (for resource enumeration)
 az role assignment create \
   --assignee <app-id> \
   --role "Reader" \
+  --scope "/subscriptions/<sub-id>"
+
+# Grant Cost Management Reader (for cost data)
+az role assignment create \
+  --assignee <app-id> \
+  --role "Cost Management Reader" \
   --scope "/subscriptions/<sub-id>"
 ```
 
@@ -461,8 +479,6 @@ arguments: |
 | Zabbix integration guide | `ZabbixIntegrationGuide.md` |
 | Quick start guide | `QuickStartGuide.md` |
 | Implementation PRD | `PrdZabbixImplementation.md` |
-| Test results | `TestResults.md` |
-| TODO/changelog | `TODO.md` |
 
 ---
 

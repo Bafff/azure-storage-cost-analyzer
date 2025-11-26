@@ -81,9 +81,6 @@ functions_to_check=(
     "create_zabbix_batch_file"
     "send_batch_to_zabbix"
     "send_batch_to_zabbix_with_config"
-    "generate_subscriptions_lld"
-    "generate_disks_lld"
-    "generate_snapshots_lld"
 )
 
 for func in "${functions_to_check[@]}"; do
@@ -134,13 +131,6 @@ else
     fail "Flag --zabbix-config is recognized" "Flag in code" "Flag not found"
 fi
 
-# Check if --zabbix-discovery flag is recognized
-if grep -q '\--zabbix-discovery)' "$SCRIPT_PATH"; then
-    pass "Flag --zabbix-discovery is recognized"
-else
-    fail "Flag --zabbix-discovery is recognized" "Flag in code" "Flag not found"
-fi
-
 # ============================================================================
 # Test 4: Help Documentation
 # ============================================================================
@@ -187,13 +177,6 @@ else
     fail "Aggregated metric key" "Key present" "Key not found"
 fi
 
-# Check if per-subscription metric keys are defined (new format with metric name before subscription ID)
-if grep -q 'azure.storage.subscription\.' "$SCRIPT_PATH"; then
-    pass "Per-subscription metric keys are used"
-else
-    fail "Per-subscription metric keys" "Keys present" "Keys not found"
-fi
-
 # Check if script health metrics are defined
 if grep -q 'azure.storage.script.last_run_timestamp' "$SCRIPT_PATH"; then
     pass "Script health metric 'last_run_timestamp' is used"
@@ -202,35 +185,9 @@ else
 fi
 
 # ============================================================================
-# Test 6: LLD Macro Format
+# Test 6: Batch File Creation
 # ============================================================================
-section "Test 6: LLD Macro Format"
-
-# Check if subscription LLD macros are used
-if grep -q '{#SUBSCRIPTION_ID}' "$SCRIPT_PATH"; then
-    pass "Subscription LLD macro '{#SUBSCRIPTION_ID}' is used"
-else
-    fail "Subscription LLD macro" "Macro present" "Macro not found"
-fi
-
-# Check if disk LLD macros are used
-if grep -q '{#DISK_NAME}' "$SCRIPT_PATH"; then
-    pass "Disk LLD macro '{#DISK_NAME}' is used"
-else
-    fail "Disk LLD macro" "Macro present" "Macro not found"
-fi
-
-# Check if snapshot LLD macros are used
-if grep -q '{#SNAPSHOT_NAME}' "$SCRIPT_PATH"; then
-    pass "Snapshot LLD macro '{#SNAPSHOT_NAME}' is used"
-else
-    fail "Snapshot LLD macro" "Macro present" "Macro not found"
-fi
-
-# ============================================================================
-# Test 7: Batch File Creation
-# ============================================================================
-section "Test 7: Batch File Creation"
+section "Test 6: Batch File Creation"
 
 # Check if batch file format is correct
 if grep -q '/tmp/zabbix_batch_' "$SCRIPT_PATH"; then
@@ -247,28 +204,9 @@ else
 fi
 
 # ============================================================================
-# Test 8: zabbix-discovery Command
+# Test 7: Integration with unused-report
 # ============================================================================
-section "Test 8: zabbix-discovery Command"
-
-# Check if zabbix-discovery command exists
-if grep -q '"zabbix-discovery")' "$SCRIPT_PATH"; then
-    pass "Command 'zabbix-discovery' is defined"
-else
-    fail "Command 'zabbix-discovery'" "Command present" "Command not found"
-fi
-
-# Check if discovery types are validated
-if grep -A 10 '"zabbix-discovery")' "$SCRIPT_PATH" | grep -q 'subscriptions\|disks\|snapshots'; then
-    pass "Discovery types are validated"
-else
-    fail "Discovery type validation" "Validation present" "Validation not found"
-fi
-
-# ============================================================================
-# Test 9: Integration with unused-report
-# ============================================================================
-section "Test 9: Integration with unused-report"
+section "Test 7: Integration with unused-report"
 
 # Check if unused-report integrates Zabbix sending
 if grep -A 50 '"unused-report")' "$SCRIPT_PATH" | grep -q 'zabbix_send'; then
@@ -292,9 +230,9 @@ else
 fi
 
 # ============================================================================
-# Test 10: Config File Integration
+# Test 8: Config File Integration
 # ============================================================================
-section "Test 10: Config File Integration"
+section "Test 8: Config File Integration"
 
 # Check if Zabbix config variables are applied
 if grep -A 10 '"unused-report")' "$SCRIPT_PATH" | grep -q 'CONFIG_ZABBIX'; then
@@ -311,9 +249,9 @@ else
 fi
 
 # ============================================================================
-# Test 11: Error Handling
+# Test 9: Error Handling
 # ============================================================================
-section "Test 11: Error Handling"
+section "Test 9: Error Handling"
 
 # Check if zabbix_sender availability is checked
 if grep -q 'command -v zabbix_sender' "$SCRIPT_PATH"; then
@@ -330,9 +268,9 @@ else
 fi
 
 # ============================================================================
-# Test 12: Zabbix Variables
+# Test 10: Zabbix Variables
 # ============================================================================
-section "Test 12: Zabbix Variables"
+section "Test 10: Zabbix Variables"
 
 # Check if Zabbix variables are defined in main()
 zabbix_vars=(
@@ -341,7 +279,6 @@ zabbix_vars=(
     "zabbix_port"
     "zabbix_host"
     "zabbix_config_file"
-    "zabbix_discovery"
 )
 
 for var in "${zabbix_vars[@]}"; do

@@ -12,10 +12,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE_FILE="$SCRIPT_DIR/../docker-compose.yml"
+COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 # Use YAML template for automated testing (cleaner format, better compatibility)
 # For production Web UI import, you can use either YAML or XML format
-TEMPLATE_FILE="${ZABBIX_TEMPLATE_FILE:-$SCRIPT_DIR/../templates/zabbix-template-azure-storage-monitor-7.0.yaml}"
+TEMPLATE_FILE="${ZABBIX_TEMPLATE_FILE:-$SCRIPT_DIR/../templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml}"
 
 # Colors
 RED='\033[0;31m'
@@ -31,7 +31,7 @@ ZABBIX_USER="Admin"
 ZABBIX_PASSWORD="zabbix"
 ZABBIX_SERVER="localhost"
 ZABBIX_PORT="10051"
-TEST_HOST_NAME="azure-storage-monitor-test"
+TEST_HOST_NAME="azure-storage-cost-analyzer-test"
 
 # Global variables
 AUTH_TOKEN=""

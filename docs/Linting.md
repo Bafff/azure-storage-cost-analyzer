@@ -80,7 +80,7 @@ Lint YAML files:
 
 ```bash
 # Lint specific file
-yamllint .pipelines/azure-pipelines-storage-monitor.yml
+yamllint .pipelines/azure-pipelines-storage-cost-analyzer.yml
 
 # Lint all YAML files
 find . -name "*.yml" -o -name "*.yaml" -type f -exec yamllint {} \;
@@ -109,13 +109,13 @@ Comprehensive Zabbix-specific template validation using the standalone validator
 
 ```bash
 # Validate a specific template
-python3 templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
+python3 templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml
 
 # Validate all templates in current directory
 python3 templates/validate-zabbix-template.py --all
 
 # The script is executable, so you can also run:
-./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-monitor-7.0.yaml
+./templates/validate-zabbix-template.py templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml
 ```
 
 **The validator (`validate-zabbix-template.py`) is a comprehensive standalone script that checks:**
@@ -123,7 +123,6 @@ python3 templates/validate-zabbix-template.py --all
 - Zabbix version compatibility (optimized for 7.0+)
 - UUID format (both dashed and non-dashed formats)
 - Item validation (keys, value types, duplicate detection)
-- Discovery rules and item prototypes
 - Trigger expressions and priority levels
 - Macro naming conventions
 - Template groups and metadata

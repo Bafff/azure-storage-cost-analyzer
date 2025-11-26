@@ -56,7 +56,7 @@ Resources older than 60 days are included as potential anomalies.
 
 ## Notes
 - Replace `<SUBSCRIPTION_ID>` with your target subscription or use `all` for all accessible subscriptions.
-- For Zabbix sending, add `--zabbix-send --zabbix-server <host> --zabbix-host azure-storage-monitor`.
+- For Zabbix sending, add `--zabbix-send --zabbix-server <host> --zabbix-host azure-storage-cost-analyzer`.
 - Tag-based exclusion: set `Resource-Next-Review-Date=YYYY.MM.DD` on a disk/snapshot to suppress alerts until that date (use `--skip-tagged` flag).
 - RG exclusion: use `--exclude-rgs "rg1,rg2"` to exclude ephemeral resource groups (default 60-day age threshold).
 - Works on both Linux and macOS (bash 3.2+ compatible).

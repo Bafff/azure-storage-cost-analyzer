@@ -47,13 +47,11 @@ For each changed file, determine what docs need updating:
 
 **If test scripts changed (`tests/test-*.sh`):**
 
-- May update: `docs/TestResults.md`
 - Consider: `README.md` (Tests section)
 
 **If pipeline changed (`.pipelines/*.yml`, `.github/workflows/*.yml`):**
 
 - May update: `README.md` (Pipeline section)
-- May update: `docs/GithubMigrationGuide.md`
 - Consider: `docs/Linting.md` if CI/CD linting changed
 
 **If tag exclusion logic changed:**
@@ -65,7 +63,7 @@ For each changed file, determine what docs need updating:
 
 For configuration changes:
 
-- Read variables from `azure-storage-monitor.conf.example`
+- Read variables from `azure-storage-cost-analyzer.conf.example`
 - Check if `README.md` mentions these variables in Configuration section
 - Check if `docs/QuickStartGuide.md` has correct setup instructions
 
@@ -77,7 +75,7 @@ For script changes:
 
 For Zabbix changes:
 
-- Check template items/triggers in `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+- Check template items/triggers in `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 - Verify `docs/ZabbixIntegrationGuide.md` documents all metrics
 - Check `docs/ZabbixTemplateAuthoring.md` for authoring guidance
 
@@ -91,7 +89,7 @@ Show me:
 ### Files Changed (last 10 commits)
 
 - `azure-storage-cost-analyzer.sh` - 3 commits
-- `templates/zabbix-template-azure-storage-monitor-7.0.yaml` - 2 commits
+- `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml` - 2 commits
 - `docs/ZabbixTemplateAuthoring.md` - 1 commit
 
 ### Required Updates
@@ -105,10 +103,6 @@ Show me:
 
 - [ ] Update `docs/QuickStartGuide.md` - usage example outdated
 - [ ] Update `docs/ImplementationStatus.md` - feature status changed
-
-**Priority 3 (Nice to have)**:
-
-- [ ] Update `docs/TestResults.md` - test coverage expanded
 
 ### Proposed Changes
 

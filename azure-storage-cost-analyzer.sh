@@ -12,18 +12,20 @@
 # Resource group specific queries use traditional az_with_timeout CLI commands.
 #
 # CONFIGURATION: Supports INI-style configuration files for centralized settings management.
-# Use --config flag or place config at: /etc/azure-storage-monitor/config.conf,
-# ~/.azure-storage-monitor.conf, or ./azure-storage-monitor.conf
+# Use --config flag or place config at: /etc/azure-storage-cost-analyzer/config.conf,
+# ~/.azure-storage-cost-analyzer.conf, or ./azure-storage-cost-analyzer.conf
 #
 # Usage:
 #   ./azure-storage-cost-analyzer.sh [RESOURCE_IDENTIFIER] [SUBSCRIPTION_ID] [START_DATE] [END_DATE] [OPTIONS]
 
 set -euo pipefail
 
-# Default values
-DEFAULT_SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"
-DEFAULT_RESOURCE_GROUP="MC_internal-aks-dev-rg_internal-aks-dev_centralus"
-DEFAULT_PG_DISK="pvc-596782ff-6859-4334-992c-fa519fa2f501"
+# Default placeholders (historical/default single-resource flow under review for deprecation)
+# Leave empty to force explicit values; see TODO near historical command handling.
+DEFAULT_SUBSCRIPTION_ID=""
+DEFAULT_RESOURCE_GROUP=""
+DEFAULT_PG_DISK=""
+
 
 # Configuration file variables (will be populated by load_config)
 CONFIG_FILE=""
@@ -339,8 +341,11 @@ calculate_date_range() {
             END_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             # Start date: N days ago
-            if command -v gdate &>/dev/null; then
-                # GNU date (Linux, or brew install coreutils on Mac)
+            if date -d "1 day ago" &>/dev/null 2>&1; then
+                # GNU date (Linux)
+                START_DATE="$(date -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
+            elif command -v gdate &>/dev/null; then
+                # GNU date via coreutils (macOS with homebrew)
                 START_DATE="$(gdate -u -d "$days days ago" +"%Y-%m-%dT%H:%M:%SZ")"
             elif date -v-1d &>/dev/null 2>&1; then
                 # BSD date (macOS default)
@@ -353,8 +358,12 @@ calculate_date_range() {
 
         last-month)
             # Previous full month (1st to last day)
-            if command -v gdate &>/dev/null; then
-                # GNU date
+            if date -d "1 day ago" &>/dev/null 2>&1; then
+                # GNU date (Linux)
+                START_DATE="$(date -u -d 'last month' +"%Y-%m-01T00:00:00Z")"
+                END_DATE="$(date -u -d "$(date -d 'last month' +%Y-%m-01) +1 month -1 day" +"%Y-%m-%dT23:59:59Z")"
+            elif command -v gdate &>/dev/null; then
+                # GNU date via coreutils (macOS with homebrew)
                 START_DATE="$(gdate -u -d 'last month' +"%Y-%m-01T00:00:00Z")"
                 END_DATE="$(gdate -u -d "$(gdate -d 'last month' +%Y-%m-01) +1 month -1 day" +"%Y-%m-%dT23:59:59Z")"
             elif date -v-1d &>/dev/null 2>&1; then
@@ -442,7 +451,6 @@ usage() {
     echo "  unattached-disks-only  - Analyze only unattached disks (faster)"
     echo "  list-disks             - List all disks (no cost analysis)"
     echo "  list-snapshots         - List all snapshots (no cost analysis)"
-    echo "  zabbix-discovery       - Generate Zabbix LLD JSON (requires --zabbix-discovery)"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Basic Examples:"
@@ -534,18 +542,14 @@ usage() {
     echo "  --zabbix-port <port>        - Zabbix server port (default 10051)"
     echo "  --zabbix-host <hostname>    - Hostname used for metrics in Zabbix"
     echo "  --zabbix-config <path>      - Use zabbix_agentd.conf instead of server/port"
-    echo "  --zabbix-discovery <type>   - Generate LLD JSON (subscriptions|disks|snapshots)"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Zabbix Examples:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "  # Generate discovery payload for Zabbix"
-    echo "  $0 zabbix-discovery --zabbix-discovery subscriptions --output-format json"
-    echo ""
     echo "  # Send metrics using explicit server and host"
     echo "  $0 unused-report --days 7 --output-format zabbix --zabbix-send \\"
-    echo "     --zabbix-server monitoring.company.com --zabbix-host azure-storage-monitor"
+    echo "     --zabbix-server monitoring.company.com --zabbix-host azure-storage-cost-analyzer"
     echo ""
     echo "  # Send metrics using agent config file"
     echo "  $0 unused-report --days 7 --output-format zabbix --zabbix-send \\"
@@ -590,7 +594,6 @@ usage() {
     echo "  --zabbix-port <port>             - Zabbix server port (default: 10051)"
     echo "  --zabbix-host <hostname>         - Zabbix host name for metrics"
     echo "  --zabbix-config <path>           - Use Zabbix agent config file"
-    echo "  --zabbix-discovery <type>        - Generate LLD JSON (subscriptions|disks|snapshots|resourcegroups)"
     echo ""
     echo "Thresholds:"
     echo "  --warning-threshold <usd>    - Warn when monthly cost exceeds amount"
@@ -728,20 +731,20 @@ find_config_file() {
     fi
 
     # Priority 2: System-wide config
-    if [[ -f "/etc/azure-storage-monitor/config.conf" ]]; then
-        echo "/etc/azure-storage-monitor/config.conf"
+    if [[ -f "/etc/azure-storage-cost-analyzer/config.conf" ]]; then
+        echo "/etc/azure-storage-cost-analyzer/config.conf"
         return 0
     fi
 
     # Priority 3: User-specific config
-    if [[ -f "$HOME/.azure-storage-monitor.conf" ]]; then
-        echo "$HOME/.azure-storage-monitor.conf"
+    if [[ -f "$HOME/.azure-storage-cost-analyzer.conf" ]]; then
+        echo "$HOME/.azure-storage-cost-analyzer.conf"
         return 0
     fi
 
     # Priority 4: Local directory config
-    if [[ -f "./azure-storage-monitor.conf" ]]; then
-        echo "./azure-storage-monitor.conf"
+    if [[ -f "./azure-storage-cost-analyzer.conf" ]]; then
+        echo "./azure-storage-cost-analyzer.conf"
         return 0
     fi
 
@@ -1820,9 +1823,17 @@ collect_subscription_metrics() {
     local total_excluded_pending=$((disk_excluded_pending + snapshot_excluded_pending))
 
     # Prepare disk details for output (escape for JSON)
+    # Include TagStatusDetail if present (for invalid tag reporting)
     local disk_details_json="[]"
     if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
+        disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created, TagStatusDetail: .TagStatusDetail}]' 2>/dev/null || echo "[]")
+    fi
+
+    # Prepare snapshot details for output (escape for JSON)
+    # Include TagStatusDetail if present (for invalid tag reporting)
+    local snapshot_details_json="[]"
+    if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
+        snapshot_details_json=$(echo "$snapshots_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created, TagStatusDetail: .TagStatusDetail}]' 2>/dev/null || echo "[]")
     fi
 
     # Output JSON (with defensive defaults to ensure valid JSON even if variables are empty)
@@ -1843,7 +1854,8 @@ collect_subscription_metrics() {
     "invalid_tags": ${total_invalid_tags:-0},
     "excluded_pending_review": ${total_excluded_pending:-0}
   },
-  "disk_details": ${disk_details_json:-[]}
+  "disk_details": ${disk_details_json:-[]},
+  "snapshot_details": ${snapshot_details_json:-[]}
 }
 EOF
 
@@ -2011,40 +2023,19 @@ EOF
             ;;
 
         zabbix)
-            # Output Zabbix metrics (batch format)
+            # Output Zabbix metrics (batch format without timestamps)
             local timestamp=$(date +%s)
-            local zabbix_host="${CONFIG_ZABBIX_HOSTNAME:-azure-storage-monitor}"
+            local zabbix_host="${CONFIG_ZABBIX_HOSTNAME:-azure-storage-cost-analyzer}"
 
-            echo "$zabbix_host azure.storage.all.total_waste.monthly $timestamp $(printf "%.2f" "$total_waste_monthly")"
-            echo "$zabbix_host azure.storage.all.total_disks $timestamp $total_disk_count"
-            echo "$zabbix_host azure.storage.all.total_snapshots $timestamp $total_snapshot_count"
-            echo "$zabbix_host azure.storage.all.subscriptions_scanned $timestamp ${#subscription_ids[@]}"
-            echo "$zabbix_host azure.storage.all.invalid_tags $timestamp $total_invalid_tags"
-            echo "$zabbix_host azure.storage.all.excluded_pending_review $timestamp $total_excluded_pending"
-            echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp $timestamp"
-            echo "$zabbix_host azure.storage.script.execution_time_seconds $timestamp $execution_duration"
-            echo "$zabbix_host azure.storage.script.last_run_status $timestamp 0"
-
-            # Per-subscription metrics
-            for result in "${subscription_results[@]}"; do
-                local sub_id=$(echo "$result" | jq -r '.subscription_id // ""' 2>/dev/null || echo "")
-                local sub_name=$(echo "$result" | jq -r '.subscription_name // "Unknown"' 2>/dev/null || echo "Unknown")
-                local sub_status=$(echo "$result" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
-
-                if [[ "$sub_status" == "success" && -n "$sub_id" ]]; then
-                    local sub_waste=$(echo "$result" | jq -r '.metrics.total_waste_monthly // 0' 2>/dev/null || echo "0")
-                    local sub_disks=$(echo "$result" | jq -r '.metrics.unattached_disks_count // 0' 2>/dev/null || echo "0")
-                    local sub_snapshots=$(echo "$result" | jq -r '.metrics.snapshots_count // 0' 2>/dev/null || echo "0")
-                    local sub_invalid_tags=$(echo "$result" | jq -r '.metrics.invalid_tags // 0' 2>/dev/null || echo "0")
-                    local sub_excluded_pending=$(echo "$result" | jq -r '.metrics.excluded_pending_review // 0' 2>/dev/null || echo "0")
-
-                    echo "$zabbix_host azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste"
-                    echo "$zabbix_host azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks"
-                    echo "$zabbix_host azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots"
-                    echo "$zabbix_host azure.storage.subscription.invalid_tags[$sub_id] $timestamp $sub_invalid_tags"
-                    echo "$zabbix_host azure.storage.subscription.excluded_pending_review[$sub_id] $timestamp $sub_excluded_pending"
-                fi
-            done
+            echo "$zabbix_host azure.storage.all.total_waste.monthly $(printf "%.2f" "$total_waste_monthly")"
+            echo "$zabbix_host azure.storage.all.total_disks $total_disk_count"
+            echo "$zabbix_host azure.storage.all.total_snapshots $total_snapshot_count"
+            echo "$zabbix_host azure.storage.all.subscriptions_scanned ${#subscription_ids[@]}"
+            echo "$zabbix_host azure.storage.all.invalid_tags $total_invalid_tags"
+            echo "$zabbix_host azure.storage.all.excluded_pending_review $total_excluded_pending"
+            echo "$zabbix_host azure.storage.script.last_run_timestamp $timestamp"
+            echo "$zabbix_host azure.storage.script.execution_time_seconds $execution_duration"
+            echo "$zabbix_host azure.storage.script.last_run_status 0"
             ;;
 
         text)
@@ -2207,53 +2198,157 @@ create_zabbix_batch_file() {
     > "$batch_file"
 
     # Extract metrics from JSON and format for Zabbix
-    # Format: hostname key timestamp value
+    # Format: hostname key value (no timestamps - Zabbix uses current time)
 
     # Aggregated metrics
     local total_waste=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_waste_monthly_usd // .metrics.total_waste_monthly // 0')
     local total_disks=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_unattached_disks // .metrics.unattached_disks_count // 0')
     local total_snapshots=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_snapshots // .metrics.snapshots_count // 0')
+    local invalid_tags=$(echo "$metrics_json" | jq -r '.aggregated_metrics.invalid_tags // 0')
+    local excluded_pending=$(echo "$metrics_json" | jq -r '.aggregated_metrics.excluded_pending_review // 0')
 
-    echo "$hostname azure.storage.all.total_waste.monthly $timestamp $total_waste" >> "$batch_file"
-    echo "$hostname azure.storage.all.total_disks $timestamp $total_disks" >> "$batch_file"
-    echo "$hostname azure.storage.all.total_snapshots $timestamp $total_snapshots" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_waste.monthly $total_waste" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_disks $total_disks" >> "$batch_file"
+    echo "$hostname azure.storage.all.total_snapshots $total_snapshots" >> "$batch_file"
+    echo "$hostname azure.storage.all.invalid_tags $invalid_tags" >> "$batch_file"
+    echo "$hostname azure.storage.all.excluded_pending_review $excluded_pending" >> "$batch_file"
+
+    # Subscriptions scanned count
+    local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length // 0')
+    echo "$hostname azure.storage.all.subscriptions_scanned $sub_count" >> "$batch_file"
 
     # Script health metrics
-    echo "$hostname azure.storage.script.last_run_timestamp $timestamp $timestamp" >> "$batch_file"
-    echo "$hostname azure.storage.script.last_run_status $timestamp 0" >> "$batch_file"
+    local exec_duration=$(echo "$metrics_json" | jq -r '.execution.duration_seconds // 0')
+    echo "$hostname azure.storage.script.last_run_timestamp $timestamp" >> "$batch_file"
+    echo "$hostname azure.storage.script.execution_time_seconds $exec_duration" >> "$batch_file"
+    echo "$hostname azure.storage.script.last_run_status 0" >> "$batch_file"
 
-    # Per-subscription metrics (if available)
-    if echo "$metrics_json" | jq -e '.by_subscription' > /dev/null 2>&1; then
-        local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length')
-        echo "$hostname azure.storage.all.subscriptions_scanned $timestamp $sub_count" >> "$batch_file"
+    # Resource details (TEXT item for trigger descriptions)
+    # Format: TYPE | NAME | RG | SUBSCRIPTION | SIZE_GB
+    local resource_details=""
 
-        # Iterate through subscriptions
-        for ((i=0; i<sub_count; i++)); do
-            local sub_id=$(echo "$metrics_json" | jq -r ".by_subscription[$i].subscription_id")
-            local sub_status=$(echo "$metrics_json" | jq -r ".by_subscription[$i].status")
+    # Extract disk details from all subscriptions (limit to first 25)
+    local disk_details
+    local disk_count_total
+    disk_count_total=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.disk_details) | .disk_details[]] | length
+        elif .disk_details then
+            .disk_details | length
+        else 0
+        end
+    ' 2>/dev/null || echo "0")
 
-            if [[ "$sub_status" == "success" ]]; then
-                local sub_waste=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.total_waste_monthly")
-                local sub_disks=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.unattached_disks_count")
-                local sub_snapshots=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.snapshots_count")
+    disk_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.disk_details) | .disk_details[] as $d |
+             "DISK | \($d.name) | \($d.resource_group) | \(.subscription_name // .subscription_id) | \($d.size_gb)GB"]
+            | .[0:25] | join("\n")
+        elif .disk_details then
+            [.disk_details[] | "DISK | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
+            | .[0:25] | join("\n")
+        else ""
+        end
+    ' 2>/dev/null || echo "")
 
-                echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $timestamp $sub_waste" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.disk_count[$sub_id] $timestamp $sub_disks" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $timestamp $sub_snapshots" >> "$batch_file"
+    # Extract snapshot details from all subscriptions (limit to first 25)
+    local snapshot_details
+    local snapshot_count_total
+    snapshot_count_total=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.snapshot_details) | .snapshot_details[]] | length
+        elif .snapshot_details then
+            .snapshot_details | length
+        else 0
+        end
+    ' 2>/dev/null || echo "0")
 
-                # Send disk details (TEXT item)
-                local disk_details_json=$(echo "$metrics_json" | jq -r ".by_subscription[$i].disk_details // []")
-                if [[ -n "$disk_details_json" ]] && [[ "$disk_details_json" != "[]" ]]; then
-                    local disk_details_text=$(format_disk_details_text "$disk_details_json" 10)
-                    # Escape newlines for Zabbix sender (replace with literal \n)
-                    disk_details_text=$(echo "$disk_details_text" | sed ':a;N;$!ba;s/\n/\\n/g')
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"$disk_details_text\"" >> "$batch_file"
-                else
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] $timestamp \"No unattached disks\"" >> "$batch_file"
-                fi
-            fi
-        done
+    snapshot_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.snapshot_details) | .snapshot_details[] as $s |
+             "SNAPSHOT | \($s.name) | \($s.resource_group) | \(.subscription_name // .subscription_id) | \($s.size_gb)GB"]
+            | .[0:25] | join("\n")
+        elif .snapshot_details then
+            [.snapshot_details[] | "SNAPSHOT | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
+            | .[0:25] | join("\n")
+        else ""
+        end
+    ' 2>/dev/null || echo "")
+
+    # Extract resources with invalid tags (from both disks and snapshots)
+    local invalid_tag_details
+    local invalid_tag_count
+    invalid_tag_count=$(echo "$metrics_json" | jq -r '.aggregated_metrics.invalid_tags // .invalid_tags // 0' 2>/dev/null || echo "0")
+
+    invalid_tag_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | (
+                (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
+            ), (
+                (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
+            )] | .[0:10] | join("\n")
+        else
+            [(
+                (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
+            ), (
+                (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
+            )] | .[0:10] | join("\n")
+        end
+    ' 2>/dev/null || echo "")
+
+    # Combine invalid tags (first), then disk and snapshot details
+    # Invalid tags appear at top for visibility
+    resource_details=""
+
+    # Invalid tag details first (if any exist)
+    if [[ -n "$invalid_tag_details" ]]; then
+        resource_details="${invalid_tag_details}"
+        if [[ $invalid_tag_count -gt 10 ]]; then
+            resource_details="${resource_details}"$'\n'"... (showing 10 of $invalid_tag_count invalid tags)"
+        fi
     fi
+
+    # Then disk and snapshot details
+    local truncation_notice=""
+    if [[ $disk_count_total -gt 25 || $snapshot_count_total -gt 25 ]]; then
+        truncation_notice="... (showing 25 of $disk_count_total disks, 25 of $snapshot_count_total snapshots)"
+    fi
+
+    if [[ -n "$disk_details" && -n "$snapshot_details" ]]; then
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${disk_details}"$'\n'"${snapshot_details}"
+        else
+            resource_details="${disk_details}"$'\n'"${snapshot_details}"
+        fi
+    elif [[ -n "$disk_details" ]]; then
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${disk_details}"
+        else
+            resource_details="$disk_details"
+        fi
+    elif [[ -n "$snapshot_details" ]]; then
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${snapshot_details}"
+        else
+            resource_details="$snapshot_details"
+        fi
+    elif [[ -z "$resource_details" ]]; then
+        resource_details="No unattached disks or snapshots found"
+    fi
+
+    [[ -n "$truncation_notice" ]] && resource_details="${resource_details}"$'\n'"${truncation_notice}"
+
+    # Escape newlines and quotes for zabbix_sender batch format (one metric per line)
+    # Use awk for portable newline replacement (works on both BSD/macOS and GNU/Linux)
+    local escaped_details
+    escaped_details=$(printf '%s' "$resource_details" | awk 'BEGIN{ORS="\\n"} {gsub(/"/, "\\\""); print}' | sed 's/\\n$//')
+
+    # Send resource details as single-line value
+    echo "$hostname azure.storage.all.resource_details \"$escaped_details\"" >> "$batch_file"
 
     echo "$batch_file"
 }
@@ -2278,16 +2373,25 @@ send_batch_to_zabbix() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix server $server:$port..."
 
-    # Send all metrics in one batch
-    if zabbix_sender -z "$server" \
+    # Send all metrics in one batch, capture output to file first
+    local send_output
+    send_output=$(zabbix_sender -z "$server" \
                      -p "$port" \
                      -i "$batch_file" \
-                     -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
+                     -vv 2>&1)
+    local send_result=$?
+
+    # Log output for debugging
+    echo "$send_output" >> /tmp/zabbix_send.log
+
+    # Check for success: must have "processed:" and "failed: 0" in output
+    if echo "$send_output" | grep -q "processed:" && echo "$send_output" | grep -q "failed: 0"; then
         log_progress "Successfully sent all metrics to Zabbix"
         rm -f "$batch_file"
         return 0
     else
         log_progress "ERROR: Failed to send metrics to Zabbix"
+        log_progress "zabbix_sender exit code: $send_result"
         # Keep batch file for debugging
         local failed_batch="/tmp/failed_zabbix_batch_$(date +%Y%m%d-%H%M%S).txt"
         mv "$batch_file" "$failed_batch"
@@ -2335,113 +2439,6 @@ send_batch_to_zabbix_with_config() {
         return 1
     fi
 }
-
-# ============================================================================
-# ZABBIX LOW-LEVEL DISCOVERY (LLD) FUNCTIONS
-# ============================================================================
-
-# Function to generate LLD JSON for subscriptions
-# Usage: generate_subscriptions_lld
-generate_subscriptions_lld() {
-    log_verbose "Generating subscription LLD JSON..."
-
-    local subscriptions_json=$(get_subscriptions_with_names)
-
-    if [[ -z "$subscriptions_json" ]]; then
-        echo '{"data":[]}'
-        return 1
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$subscriptions_json" | jq '{data: [.[] | {
-        "{#SUBSCRIPTION_ID}": .id,
-        "{#SUBSCRIPTION_NAME}": .name
-    }]}'
-}
-
-# Function to generate LLD JSON for unattached disks
-# Usage: generate_disks_lld "subscription-id" "resource-group"
-generate_disks_lld() {
-    local subscription_id="$1"
-    local resource_group="${2:-}"
-
-    log_verbose "Generating disks LLD JSON for subscription: $subscription_id..."
-
-    local disks_json=$(list_unattached_disks "$subscription_id" "$resource_group" "false")
-
-    if [[ -z "$disks_json" ]] || ! echo "$disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$disks_json" | jq '{data: [.[] | {
-        "{#DISK_NAME}": .Name,
-        "{#DISK_ID}": .Id,
-        "{#DISK_SIZE_GB}": (.Size | tostring),
-        "{#DISK_RG}": .ResourceGroup,
-        "{#DISK_STATE}": .State,
-        "{#DISK_SKU}": .Sku,
-        "{#DISK_CREATED}": .Created,
-        "{#SUBSCRIPTION_ID}": "'"$subscription_id"'"
-    }]}'
-}
-
-# Function to generate LLD JSON for snapshots
-# Usage: generate_snapshots_lld "subscription-id" "resource-group"
-generate_snapshots_lld() {
-    local subscription_id="$1"
-    local resource_group="${2:-}"
-
-    log_verbose "Generating snapshots LLD JSON for subscription: $subscription_id..."
-
-    local snapshots_json=$(get_all_snapshots_with_details "$subscription_id" "$resource_group")
-
-    if [[ -z "$snapshots_json" ]] || ! echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$snapshots_json" | jq '{data: [.[] | {
-        "{#SNAPSHOT_NAME}": .Name,
-        "{#SNAPSHOT_ID}": .Id,
-        "{#SNAPSHOT_SIZE_GB}": (.Size | tostring),
-        "{#SNAPSHOT_RG}": .ResourceGroup,
-        "{#SNAPSHOT_SKU}": .Sku,
-        "{#SNAPSHOT_CREATED}": .Created,
-        "{#SUBSCRIPTION_ID}": "'"$subscription_id"'"
-    }]}'
-}
-
-# Function to generate LLD JSON for resource groups
-# Usage: generate_resource_groups_lld "subscription-id"
-generate_resource_groups_lld() {
-    local subscription_id="$1"
-
-    log_verbose "Generating resource group LLD JSON for subscription: ${subscription_id:-all subscriptions}..."
-
-    local groups_json
-    if [[ -n "$subscription_id" ]]; then
-        groups_json=$(az_with_timeout group list --subscription "$subscription_id" -o json 2>/dev/null) || groups_json="[]"
-    else
-        groups_json=$(az_with_timeout group list -o json 2>/dev/null) || groups_json="[]"
-    fi
-
-    if [[ -z "$groups_json" ]] || [[ "$groups_json" == "[]" ]]; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    echo "$groups_json" | jq '{data: [.[] | {
-        "{#RG_NAME}": .name,
-        "{#SUBSCRIPTION_ID}": (.id | split("/")[2])
-    }]}' 2>/dev/null || echo '{"data":[]}'
-}
-
-# ============================================================================
-# END ZABBIX INTEGRATION FUNCTIONS
-# ============================================================================
 
 # Function to retry Azure API calls with exponential backoff
 retry_azure_api() {
@@ -4029,7 +4026,8 @@ main() {
     # Check if $2 is a flag (starts with -) or positional parameter
     if [[ -n "${2:-}" && "${2}" != -* ]]; then
         # Legacy positional syntax: command sub_id [start_date end_date [resource_group]]
-        subscription_id="${2:-$DEFAULT_SUBSCRIPTION_ID}"
+        # Legacy positional syntax: command sub_id [start_date end_date [resource_group]]
+        subscription_id="${2:-}"
 
         if [[ -n "${3:-}" && "${3}" != -* && -n "${4:-}" && "${4}" != -* ]]; then
             start_date="${3:-}"
@@ -4040,7 +4038,8 @@ main() {
         fi
     else
         # Modern flag syntax: command [flags]
-        subscription_id="$DEFAULT_SUBSCRIPTION_ID"
+        # Modern flag syntax: command [flags]
+        subscription_id=""
         positional_count=1
     fi
 
@@ -4067,7 +4066,6 @@ main() {
     local zabbix_port="10051"     # Zabbix server port (default: 10051)
     local zabbix_host=""          # Zabbix host name for metrics
     local zabbix_config_file=""   # Alternative: use zabbix_agentd.conf
-    local zabbix_discovery=""     # LLD discovery type: subscriptions|disks|snapshots|resourcegroups
 
     local cli_warning_threshold=""
     local cli_critical_threshold=""
@@ -4357,24 +4355,6 @@ main() {
                 zabbix_config_file="$2"
                 shift 2
                 ;;
-            --zabbix-discovery)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --zabbix-discovery requires a type (subscriptions|disks|snapshots|resourcegroups)"
-                    usage
-                fi
-                zabbix_discovery="$2"
-                # Validate discovery type
-                case "$zabbix_discovery" in
-                    subscriptions|disks|snapshots|resourcegroups)
-                        # Valid
-                        ;;
-                    *)
-                        echo "Error: Invalid discovery type '$zabbix_discovery'. Must be: subscriptions, disks, snapshots, or resourcegroups"
-                        exit $EXIT_CONFIG_ERROR
-                        ;;
-                esac
-                shift 2
-                ;;
             --skip-tagged)
                 skip_tagged="true"
                 shift
@@ -4499,7 +4479,13 @@ main() {
 
     # Handle empty subscription ID (for single-subscription mode)
     if [[ -z "$subscription_id" && "$multi_subscription_mode" == "false" ]]; then
-        subscription_id="$DEFAULT_SUBSCRIPTION_ID"
+        # Try to get current subscription if not specified
+        subscription_id=$(az_with_timeout account show --query 'id' -o tsv 2>/dev/null)
+        if [[ -z "$subscription_id" ]]; then
+             echo "Error: No subscription ID specified and unable to detect current subscription."
+             echo "Please specify --subscriptions <id> or 'all', or run 'az login'."
+             exit $EXIT_CONFIG_ERROR
+        fi
     fi
 
     # Check Azure login
@@ -4527,33 +4513,6 @@ main() {
             ;;
         "list-snapshots")
             list_snapshots "$subscription_id"
-            exit $EXIT_SUCCESS
-            ;;
-        "zabbix-discovery")
-            # Handle Zabbix Low-Level Discovery
-            if [[ -z "$zabbix_discovery" ]]; then
-                echo "Error: --zabbix-discovery flag required with type (subscriptions|disks|snapshots)"
-                usage
-            fi
-
-            case "$zabbix_discovery" in
-                subscriptions)
-                    generate_subscriptions_lld
-                    ;;
-                disks)
-                    generate_disks_lld "$subscription_id" "$resource_group"
-                    ;;
-                snapshots)
-                    generate_snapshots_lld "$subscription_id" "$resource_group"
-                    ;;
-                resourcegroups)
-                    generate_resource_groups_lld "$subscription_id"
-                    ;;
-                *)
-                    echo "Error: Invalid discovery type: $zabbix_discovery"
-                    exit $EXIT_CONFIG_ERROR
-                    ;;
-            esac
             exit $EXIT_SUCCESS
             ;;
         "unattached-disks-only")
@@ -4601,20 +4560,16 @@ main() {
                         local timestamp=$(date +%s)
                         local batch_file=$(create_zabbix_batch_file "$zabbix_host" "$timestamp" "$report_output")
 
-                        if send_batch_to_zabbix "$zabbix_server" "$zabbix_port" "$batch_file"; then
-                            log_progress "Metrics successfully sent to Zabbix"
-                        else
-                            log_progress "WARNING: Failed to send metrics to Zabbix"
+                        if ! send_batch_to_zabbix "$zabbix_server" "$zabbix_port" "$batch_file"; then
+                            exit_code=1
                         fi
                     elif [[ -n "$zabbix_config_file" ]]; then
                         log_progress "Sending metrics to Zabbix using config file..."
                         local timestamp=$(date +%s)
-                        local batch_file=$(create_zabbix_batch_file "${zabbix_host:-azure-storage-monitor}" "$timestamp" "$report_output")
+                        local batch_file=$(create_zabbix_batch_file "${zabbix_host:-azure-storage-cost-analyzer}" "$timestamp" "$report_output")
 
-                        if send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
-                            log_progress "Metrics successfully sent to Zabbix"
-                        else
-                            log_progress "WARNING: Failed to send metrics to Zabbix"
+                        if ! send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
+                            exit_code=1
                         fi
                     else
                         log_progress "ERROR: --zabbix-send requires either (--zabbix-server and --zabbix-host) or --zabbix-config"
@@ -4669,12 +4624,23 @@ main() {
             analyze_multiple_resources "${snapshot_ids[@]}" "$subscription_id" "$start_date" "$end_date"
             ;;
         "historical")
+            # TODO: This flow is slated for review/deprecation; historically used to view SSD transaction SKUs.
+            if [[ -z "$DEFAULT_PG_DISK" || -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                echo "Error: historical flow requires DEFAULT_PG_DISK and DEFAULT_RESOURCE_GROUP (pending review/deprecation)."
+                echo "Please supply an explicit resource identifier instead."
+                exit $EXIT_CONFIG_ERROR
+            fi
             local pg_resource_id
             pg_resource_id=$(construct_disk_resource_id "$DEFAULT_PG_DISK" "$subscription_id" "$DEFAULT_RESOURCE_GROUP")
             analyze_historical_costs "$pg_resource_id" "$subscription_id"
             ;;
         "")
             # Use PostgreSQL default
+            if [[ -z "$DEFAULT_PG_DISK" || -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                echo "Error: default single-resource flow requires DEFAULT_PG_DISK and DEFAULT_RESOURCE_GROUP (pending review/deprecation)."
+                echo "Provide a resource identifier or configure defaults before running."
+                exit $EXIT_CONFIG_ERROR
+            fi
             local pg_resource_id
             pg_resource_id=$(construct_disk_resource_id "$DEFAULT_PG_DISK" "$subscription_id" "$DEFAULT_RESOURCE_GROUP")
             if [[ -z "$start_date" || -z "$end_date" ]]; then
@@ -4696,6 +4662,11 @@ main() {
                 resource_id="$resource_identifier"
             elif [[ "$resource_identifier" =~ ^pvc- ]] || [[ "$resource_identifier" =~ ^snapshot- ]] || [[ ${#resource_identifier} -gt 10 ]]; then
                 # Disk or snapshot name provided - construct full resource ID
+                if [[ -z "$DEFAULT_RESOURCE_GROUP" ]]; then
+                    echo "Error: DEFAULT_RESOURCE_GROUP is not set; required to build resource ID from name."
+                    echo "Pass a full resource ID or configure DEFAULT_RESOURCE_GROUP."
+                    exit $EXIT_CONFIG_ERROR
+                fi
                 if [[ "$resource_identifier" =~ ^snapshot- ]]; then
                     resource_id="/subscriptions/$subscription_id/resourceGroups/$DEFAULT_RESOURCE_GROUP/providers/Microsoft.Compute/snapshots/$resource_identifier"
                 else

@@ -19,7 +19,7 @@ Databricks creates and deletes managed disks regularly as part of normal cluster
 
 ## Configuration
 
-### Config File: `azure-storage-monitor.conf`
+### Config File: `azure-storage-cost-analyzer.conf`
 
 ```ini
 [exclusions]
@@ -305,7 +305,7 @@ Potential future improvements (not currently implemented):
 ## Related Documentation
 
 - [Tag Exclusion Implementation](./TagExclusionImplementation.md) - Tag-based filtering
-- [Configuration Example](../azure-storage-monitor.conf.example) - Full config reference
+- [Configuration Example](../azure-storage-cost-analyzer.conf.example) - Full config reference
 - [Quick Start Guide](./QuickStartGuide.md) - Getting started
 
 ## GitHub Issue

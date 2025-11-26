@@ -1,9 +1,9 @@
 # Zabbix Integration Guide - Azure Storage Cost Monitor
 
-**Version:** 1.0
+**Version:** 2.0
 **Zabbix Version:** 7.0.5+
 **Script:** `azure-storage-cost-analyzer.sh`
-**Last Updated:** 2025-11-20
+**Last Updated:** 2025-11-26
 
 ---
 
@@ -28,8 +28,8 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Multi-subscription scanning**: Scan all Azure subscriptions in one execution
 - **Automatic Zabbix reporting**: Metrics sent directly to Zabbix via `zabbix_sender`
-- **Low-Level Discovery (LLD)**: Per-subscription metrics with dynamic discovery
-- **Cost alerting**: Warning ($100/month, $500/month) and critical ($250/month, $1000/month) thresholds
+- **Aggregate metrics**: Total waste, disk counts, and snapshot counts across all subscriptions
+- **Cost alerting**: Warning ($500/month) and critical ($1000/month) thresholds
 - **Azure DevOps native**: Designed for pipeline execution
 
 ---
@@ -62,7 +62,6 @@ This integration enables automated monitoring of Azure storage waste (unattached
     │  │ Template │  │
     │  │  Items   │  │
     │  │ Triggers │  │
-    │  │   LLD    │  │
     │  └──────────┘  │
     └────────┬───────┘
              │
@@ -82,8 +81,8 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Zabbix version**: 7.0.5 or higher
 - **Zabbix Trapper port**: 10051 (default) open and accessible from Azure DevOps agents
-- **Template imported**: `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
-- **Host created**: `azure-storage-monitor` (or custom name)
+- **Template imported**: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
+- **Host created**: `azure-storage-cost-analyzer` (or custom name)
 
 ### 2. Azure DevOps Requirements
 
@@ -107,7 +106,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Log in to Zabbix frontend
 2. Navigate to: **Configuration** → **Templates**
 3. Click **Import**
-4. Upload `templates/zabbix-template-azure-storage-monitor-7.0.yaml`
+4. Upload `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 5. Click **Import**
 
 ### Step 2: Create Host
@@ -115,7 +114,7 @@ This integration enables automated monitoring of Azure storage waste (unattached
 1. Navigate to: **Configuration** → **Hosts**
 2. Click **Create host**
 3. Configure:
-   - **Host name**: `azure-storage-monitor` (must match `--zabbix-host` parameter)
+   - **Host name**: `azure-storage-cost-analyzer` (must match `--zabbix-host` parameter)
    - **Templates**: Link "Azure Storage Cost Monitor" template
    - **Interfaces**: Add Trapper interface (port 10051)
    - **Groups**: Add to appropriate host group (e.g., "Cloud/Azure")
@@ -129,27 +128,168 @@ After importing, verify these items exist:
 - `azure.storage.all.total_disks` - Total unattached disks
 - `azure.storage.all.total_snapshots` - Total snapshots
 - `azure.storage.all.subscriptions_scanned` - Number of subscriptions scanned
+- `azure.storage.all.invalid_tags` - Resources with malformed tags
+- `azure.storage.all.excluded_pending_review` - Resources pending review
+- `azure.storage.all.resource_details` - **TEXT** item showing (in order): invalid tags, disks, snapshots
 
 **Script Health Items:**
 - `azure.storage.script.last_run_timestamp` - Last execution timestamp
 - `azure.storage.script.execution_time_seconds` - Script duration
 - `azure.storage.script.last_run_status` - Execution status (0=success, 1=warning, 2=error)
 
-**Discovery Rule:**
-- `azure.storage.discovery.subscriptions` - Discovers Azure subscriptions
+### Step 4: Configure Macros
 
-### Step 4: Configure Triggers
+Template macros allow you to customize thresholds without modifying triggers:
 
-Default triggers (can be customized):
+| Macro | Default | Description |
+|-------|---------|-------------|
+| `{$DISK_THRESHOLD}` | 0 | Alert when unattached disk count exceeds this value |
+| `{$SNAPSHOT_THRESHOLD}` | 0 | Alert when snapshot count exceeds this value |
+| `{$WASTE_WARNING_THRESHOLD}` | 100 | Warning threshold for monthly waste (USD) |
+| `{$WASTE_CRITICAL_THRESHOLD}` | 200 | Critical threshold for monthly waste (USD) |
 
-| Trigger | Severity | Threshold |
-|---------|----------|-----------|
-| High total waste | Warning | $500/month |
-| Critical total waste | High | $1000/month |
+To customize thresholds per-host:
+1. Navigate to: **Configuration** → **Hosts**
+2. Click on your host
+3. Go to **Macros** tab
+4. Override macro values as needed
+
+### Step 5: Configure Triggers
+
+Default triggers (thresholds controlled by macros):
+
+| Trigger | Severity | Default Threshold |
+|---------|----------|-------------------|
+| Unattached disks detected | Warning | > 0 disks (`{$DISK_THRESHOLD}`) |
+| No disk data received | Average | No data for 25 hours |
+| Snapshots detected | Warning | > 0 snapshots (`{$SNAPSHOT_THRESHOLD}`) |
+| High total waste | Warning | > $100/month (`{$WASTE_WARNING_THRESHOLD}`) |
+| Critical total waste | Average | > $200/month (`{$WASTE_CRITICAL_THRESHOLD}`) |
+| Invalid review tags | Warning | Any invalid tags |
 | Script hasn't run | Average | 24 hours |
-| Per-subscription high waste | Warning | $100/month |
-| Per-subscription critical waste | High | $250/month |
-| Many unattached disks | Warning | 20+ disks |
+| Script execution failed | Warning | Status > 0 |
+
+### Trigger Links and Resource Details
+
+The following triggers include a **"Check Resource details"** link that navigates directly to the Resource Details item in Latest Data:
+
+- **Unattached disks detected** - Click link to see disk names, resource groups, and sizes
+- **Snapshots detected** - Click link to see snapshot names, resource groups, and sizes
+- **Invalid review tags detected** - Click link to identify resources with malformed tags
+
+When a trigger fires:
+1. Open the trigger in Zabbix (**Monitoring** → **Problems**)
+2. Click the **"Check Resource details"** link in the trigger's Links section
+3. View the `Resource Details` item to see affected resources
+4. Take action based on the resource list (delete, attach, fix tags, etc.)
+
+### Best Practices: Adding Trigger URL Links
+
+When adding URL links to Zabbix triggers that reference other items, follow these guidelines:
+
+**URL Format for Zabbix 7.0+:**
+```
+/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=<Item Display Name>&filter_set=1
+```
+
+**Key points:**
+- Use `hostids[]` (not `filter_hostids[]`) for host filtering
+- Use `name=` with the **item's display name** (not the key), URL-encoded
+- Example: `name=Resource%20Details` (not `name=resource_details`)
+- Add `filter_set=1` to apply the filter immediately
+- Use `url_name` property to set a descriptive link label (e.g., "Check Resource details")
+
+**Template YAML example:**
+```yaml
+triggers:
+- uuid: abc123...
+  expression: last(/Template Name/item.key)>0
+  name: 'Alert: {ITEM.LASTVALUE}'
+  url: '/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1'
+  url_name: Check Resource details
+```
+
+**Limitations:**
+- The `{ITEM.ID}` macro refers to the triggering item, not other items
+- Cannot dynamically link to `history.php?itemids[]=XXX` for a different item
+- Use Latest Data filtering by item name as the workaround
+
+### Trigger Design Checklist
+
+When creating or updating triggers, ensure each trigger includes:
+
+- [ ] **Clear action items** - Tell users what to do (delete, fix, tag, etc.)
+- [ ] **Link to supporting data** - Use `url` + `url_name` to link to related items
+- [ ] **Reference the link in description** - Point users to the clickable link (`{HOST.ID}` doesn't expand in descriptions)
+- [ ] **Helper item reference** - If a TEXT item contains details, reference it in the trigger
+
+**Example trigger description structure:**
+```
+{ITEM.LASTVALUE} issue(s) detected.
+
+Click "Check Resource details" link above, or go to Monitoring → Latest data → filter by "Resource Details".
+
+Action: [Specific steps to resolve the issue]
+```
+
+**Note:** `{HOST.ID}` macro is not expanded in description text, so use the trigger's URL link instead of embedding URLs in descriptions.
+
+---
+
+## Local Development with Docker Compose
+
+Use the provided Docker Compose setup to test Zabbix integration locally before deploying to production. This enables faster iteration and catches issues early.
+
+### Quick Start
+
+```bash
+# Start Zabbix stack
+cd tests
+docker compose up -d
+
+# Wait for services (takes ~60 seconds)
+docker ps --format '{{.Names}}: {{.Status}}' | grep zabbix
+
+# Access Zabbix UI
+open http://localhost:8080
+# Login: Admin / zabbix
+```
+
+### Testing Workflow
+
+1. **Import template:**
+   ```bash
+   # Use Zabbix API or UI to import
+   # templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml
+   ```
+
+2. **Create test host** named `azure-storage-cost-analyzer`
+
+3. **Send test data:**
+   ```bash
+   # Create test batch file
+   cat > /tmp/test_batch.txt << 'EOF'
+   azure-storage-cost-analyzer azure.storage.all.total_disks 5
+   azure-storage-cost-analyzer azure.storage.all.total_snapshots 10
+   azure-storage-cost-analyzer azure.storage.all.invalid_tags 2
+   azure-storage-cost-analyzer azure.storage.all.resource_details "[INVALID TAG] test-disk | test-rg | Tag: bad-date\nDISK | disk-1 | rg-1 | Sub-1 | 30GB"
+   EOF
+
+   # Send to local Zabbix
+   zabbix_sender -z localhost -p 10051 -i /tmp/test_batch.txt -vv
+   ```
+
+4. **Verify in UI:**
+   - Check **Monitoring → Latest data** for received values
+   - Check **Monitoring → Problems** for triggered alerts
+   - Test trigger URL links work correctly
+
+### Cleanup
+
+```bash
+cd tests
+docker compose down -v  # -v removes volumes
+```
 
 ---
 
@@ -170,9 +310,15 @@ Your Azure DevOps agents need `zabbix_sender` installed. Add this to your pipeli
       sudo apt-get install -y zabbix-sender jq bc
 ```
 
+### Agent Pool Options (self-hosted vs hosted)
+
+- **Repository default:** The shipped pipeline YAML uses a self-hosted Linux pool so you control outbound access to Zabbix. Change `pool.name` to the name of your pool; keep the `Agent.OS -equals Linux` demand.
+- **Self-hosted requirements:** Agent must reach your Zabbix server on port 10051 and be able to install or already have `zabbix-sender`, `jq`, `bc`, and `coreutils` available (via `sudo apt-get` or preinstall).
+- **Hosted option:** If your Zabbix endpoint is internet-accessible, you can switch to Microsoft-hosted agents by replacing the `pool` block with `vmImage: 'ubuntu-latest'`.
+
 ### Pipeline YAML Example
 
-Create `.pipelines/azure-pipelines-storage-monitor.yml`:
+Create `.pipelines/azure-pipelines-storage-cost-analyzer.yml`:
 
 ```yaml
 trigger: none  # Manual or scheduled only
@@ -186,12 +332,17 @@ schedules:
     always: true  # Run even if no code changes
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: '<your-self-hosted-linux-pool>'  # Update to your pool name
+  demands:
+    - Agent.OS -equals Linux
+# Hosted alternative:
+# pool:
+#   vmImage: 'ubuntu-latest'
 
 variables:
   - group: zabbix-rs-credentials  # Variable group with ZABBIX_SERVER
   - name: ZABBIX_HOST
-    value: 'azure-storage-monitor'
+    value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30
 
@@ -269,7 +420,7 @@ Repeat for each subscription or use management group scope.
   --output-format json \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Scan Specific Subscriptions
@@ -281,12 +432,12 @@ Repeat for each subscription or use management group scope.
   --days 30 \
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Using Config File
 
-Create `/etc/azure-storage-monitor/config.conf`:
+Create `/etc/azure-storage-cost-analyzer/config.conf`:
 
 ```ini
 [azure]
@@ -301,7 +452,7 @@ verbosity = quiet
 enabled = true
 server = monitoring.company.com
 port = 10051
-hostname = azure-storage-monitor
+hostname = azure-storage-cost-analyzer
 auto_send = true
 ```
 
@@ -309,7 +460,7 @@ Then run:
 
 ```bash
 ./azure-storage-cost-analyzer.sh unused-report \
-  --config /etc/azure-storage-monitor/config.conf
+  --config /etc/azure-storage-cost-analyzer/config.conf
 ```
 
 ### Dry Run (No Zabbix Send)
@@ -334,14 +485,8 @@ Then run:
 | `azure.storage.all.total_disks` | Unsigned | disks | Number of unattached disks |
 | `azure.storage.all.total_snapshots` | Unsigned | snapshots | Number of snapshots |
 | `azure.storage.all.subscriptions_scanned` | Unsigned | count | Subscriptions scanned |
-
-### Per-Subscription Metrics (LLD)
-
-| Metric Key | Type | Unit | Description |
-|------------|------|------|-------------|
-| `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]` | Float | USD | Monthly waste for this subscription |
-| `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]` | Unsigned | disks | Unattached disks in this subscription |
-| `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]` | Unsigned | snapshots | Snapshots in this subscription |
+| `azure.storage.all.invalid_tags` | Unsigned | tags | Resources with malformed tags |
+| `azure.storage.all.excluded_pending_review` | Unsigned | resources | Resources pending review |
 
 ### Script Health Metrics
 
@@ -416,13 +561,27 @@ brew install zabbix
 ### Issue: No data in Zabbix
 
 **Check:**
-1. Host `azure-storage-monitor` exists in Zabbix
+1. Host `azure-storage-cost-analyzer` exists in Zabbix
 2. Template is linked to host
 3. Items are enabled (not disabled)
 4. Check Zabbix server logs:
    ```bash
    tail -f /var/log/zabbix/zabbix_server.log | grep azure-storage
    ```
+
+### Issue: Items show "Not supported" with type mismatch error
+
+**Error:** `Value of type "string" is not suitable for value type "Numeric (unsigned)"`
+
+This happens when corrupted data (e.g., with timestamps in value field) was sent to items.
+
+**Solution:**
+1. In Zabbix: **Data collection** → **Hosts** → `azure-storage-cost-analyzer` → **Items**
+2. Select affected items
+3. Click **Mass update** → **Clear history and trends**
+4. Or recreate the host from scratch
+
+**Prevention:** Always use format `hostname key value` without timestamps.
 
 ### Issue: Permission denied accessing subscriptions
 
@@ -464,7 +623,7 @@ Enable verbose logging:
   --verbose \  # Add verbose flag
   --zabbix-send \
   --zabbix-server monitoring.company.com \
-  --zabbix-host azure-storage-monitor
+  --zabbix-host azure-storage-cost-analyzer
 ```
 
 ### Validate Metrics Manually
@@ -472,9 +631,22 @@ Enable verbose logging:
 Send test metric to Zabbix:
 
 ```bash
-echo "azure-storage-monitor azure.storage.all.total_waste.monthly $(date +%s) 123.45" | \
-  zabbix_sender -z your-zabbix-server.com -p 10051 -i -
+# Single metric (no timestamp - Zabbix uses current time)
+zabbix_sender -z your-zabbix-server.com -p 10051 \
+  -s "azure-storage-cost-analyzer" \
+  -k "azure.storage.all.total_waste.monthly" \
+  -o "123.45"
+
+# Batch file format (hostname key value - NO timestamps)
+cat > /tmp/test_batch.txt << 'EOF'
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 123.45
+azure-storage-cost-analyzer azure.storage.all.total_disks 5
+EOF
+zabbix_sender -z your-zabbix-server.com -p 10051 -i /tmp/test_batch.txt
 ```
+
+> **Important:** Do NOT use timestamps in batch files. The format is `hostname key value` only.
+> Using `-T` flag with timestamps can cause data to be silently ignored.
 
 Check if received in Zabbix: **Monitoring** → **Latest data** → Filter by host
 
@@ -485,9 +657,8 @@ Check if received in Zabbix: **Monitoring** → **Latest data** → Filter by ho
 For issues or questions:
 
 1. Check script help: `./azure-storage-cost-analyzer.sh --help`
-2. Review test results: `TestResults.md`
-3. Check PRD: `PrdZabbixImplementation.md`
-4. Contact: DevOps Team
+2. Check PRD: `docs/PrdZabbixImplementation.md`
+3. Contact: DevOps Team
 
 ---
 
