@@ -1821,15 +1821,17 @@ collect_subscription_metrics() {
     local total_excluded_pending=$((disk_excluded_pending + snapshot_excluded_pending))
 
     # Prepare disk details for output (escape for JSON)
+    # Include TagStatusDetail if present (for invalid tag reporting)
     local disk_details_json="[]"
     if [[ -n "$unattached_disks_json" ]] && echo "$unattached_disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
+        disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created, TagStatusDetail: .TagStatusDetail}]' 2>/dev/null || echo "[]")
     fi
 
     # Prepare snapshot details for output (escape for JSON)
+    # Include TagStatusDetail if present (for invalid tag reporting)
     local snapshot_details_json="[]"
     if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        snapshot_details_json=$(echo "$snapshots_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
+        snapshot_details_json=$(echo "$snapshots_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created, TagStatusDetail: .TagStatusDetail}]' 2>/dev/null || echo "[]")
     fi
 
     # Output JSON (with defensive defaults to ensure valid JSON even if variables are empty)
@@ -2292,19 +2294,68 @@ create_zabbix_batch_file() {
         end
     ' 2>/dev/null || echo "")
 
-    # Combine disk and snapshot details with truncation notice
+    # Extract resources with invalid tags (from both disks and snapshots)
+    local invalid_tag_details
+    local invalid_tag_count
+    invalid_tag_count=$(echo "$metrics_json" | jq -r '.aggregated_metrics.invalid_tags // .invalid_tags // 0' 2>/dev/null || echo "0")
+
+    invalid_tag_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | (
+                (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+            ), (
+                (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+            )] | .[0:10] | join("\n")
+        else
+            [(
+                (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+            ), (
+                (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+            )] | .[0:10] | join("\n")
+        end
+    ' 2>/dev/null || echo "")
+
+    # Combine invalid tags (first), then disk and snapshot details
+    # Invalid tags appear at top for visibility
+    resource_details=""
+
+    # Invalid tag details first (if any exist)
+    if [[ -n "$invalid_tag_details" ]]; then
+        resource_details="${invalid_tag_details}"
+        if [[ $invalid_tag_count -gt 10 ]]; then
+            resource_details="${resource_details}"$'\n'"... (showing 10 of $invalid_tag_count invalid tags)"
+        fi
+    fi
+
+    # Then disk and snapshot details
     local truncation_notice=""
     if [[ $disk_count_total -gt 25 || $snapshot_count_total -gt 25 ]]; then
         truncation_notice="... (showing 25 of $disk_count_total disks, 25 of $snapshot_count_total snapshots)"
     fi
 
     if [[ -n "$disk_details" && -n "$snapshot_details" ]]; then
-        resource_details="${disk_details}"$'\n'"${snapshot_details}"
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${disk_details}"$'\n'"${snapshot_details}"
+        else
+            resource_details="${disk_details}"$'\n'"${snapshot_details}"
+        fi
     elif [[ -n "$disk_details" ]]; then
-        resource_details="$disk_details"
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${disk_details}"
+        else
+            resource_details="$disk_details"
+        fi
     elif [[ -n "$snapshot_details" ]]; then
-        resource_details="$snapshot_details"
-    else
+        if [[ -n "$resource_details" ]]; then
+            resource_details="${resource_details}"$'\n'"${snapshot_details}"
+        else
+            resource_details="$snapshot_details"
+        fi
+    elif [[ -z "$resource_details" ]]; then
         resource_details="No unattached disks or snapshots found"
     fi
 
