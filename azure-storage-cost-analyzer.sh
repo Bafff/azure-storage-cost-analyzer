@@ -2303,18 +2303,18 @@ create_zabbix_batch_file() {
         if .by_subscription then
             [.by_subscription[] | (
                 (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
-                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
             ), (
                 (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
-                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
             )] | .[0:10] | join("\n")
         else
             [(
                 (.disk_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
-                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
             ), (
                 (.snapshot_details // [])[] | select(.TagStatusDetail.tag_status == "invalid") |
-                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.raw_value // "malformed")"
+                "[INVALID TAG] \(.name) | \(.resource_group) | Tag: \(.TagStatusDetail.review_date // "malformed")"
             )] | .[0:10] | join("\n")
         end
     ' 2>/dev/null || echo "")
@@ -2392,11 +2392,19 @@ send_batch_to_zabbix() {
     local metric_count=$(wc -l < "$batch_file")
     log_progress "Sending $metric_count metrics to Zabbix server $server:$port..."
 
-    # Send all metrics in one batch
-    if zabbix_sender -z "$server" \
+    # Send all metrics in one batch, capture output to file first
+    local send_output
+    send_output=$(zabbix_sender -z "$server" \
                      -p "$port" \
                      -i "$batch_file" \
-                     -vv 2>&1 | tee -a /tmp/zabbix_send.log | grep -q "processed:"; then
+                     -vv 2>&1)
+    local send_result=$?
+
+    # Log output for debugging
+    echo "$send_output" >> /tmp/zabbix_send.log
+
+    # Check for success: either exit code 0 or "processed:" in output
+    if [[ $send_result -eq 0 ]] || echo "$send_output" | grep -q "processed:"; then
         log_progress "Successfully sent all metrics to Zabbix"
         rm -f "$batch_file"
         return 0
