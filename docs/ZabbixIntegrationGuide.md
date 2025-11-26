@@ -130,7 +130,7 @@ After importing, verify these items exist:
 - `azure.storage.all.subscriptions_scanned` - Number of subscriptions scanned
 - `azure.storage.all.invalid_tags` - Resources with malformed tags
 - `azure.storage.all.excluded_pending_review` - Resources pending review
-- `azure.storage.all.resource_details` - **TEXT** item with disk/snapshot names and resource groups
+- `azure.storage.all.resource_details` - **TEXT** item showing (in order): invalid tags, disks, snapshots
 
 **Script Health Items:**
 - `azure.storage.script.last_run_timestamp` - Last execution timestamp

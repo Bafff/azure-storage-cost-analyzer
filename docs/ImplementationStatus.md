@@ -34,9 +34,9 @@ Your Azure Storage Cost Analyzer script is **fully functional** and ready for au
 3. Click **Import**
 4. Upload: `templates/zabbix-template-azure-storage-cost-analyzer-7.0.yaml`
 5. Create host `azure-storage-cost-analyzer`:
-   - Template: "Azure Storage Cost Monitor"
+   - Template: "Ark Template Azure Storage Cost Monitor"
    - Interface: Trapper (port 10051)
-   - Host groups: Templates/Cloud
+   - Host groups: Cloud/Azure
 
 **Verification:**
 ```bash
@@ -52,15 +52,21 @@ curl -s -X POST http://your-zabbix/api_jsonrpc.php \
    - Navigate to: Pipelines → Library → Variable groups
    - Add variable: `ZABBIX_SERVER` = `your-zabbix-server.company.com`
 
-2. **Verify Service Principal** has Reader role:
+2. **Verify Service Principal** has Reader and Cost Management Reader roles:
    ```bash
    # Check current assignments
    az role assignment list --assignee <service-principal-app-id> --output table
 
-   # Grant if missing
+   # Grant Reader if missing
    az role assignment create \
      --assignee <app-id> \
      --role "Reader" \
+     --scope "/subscriptions/<sub-id>"
+
+   # Grant Cost Management Reader for cost data access
+   az role assignment create \
+     --assignee <app-id> \
+     --role "Cost Management Reader" \
      --scope "/subscriptions/<sub-id>"
    ```
 
@@ -105,7 +111,7 @@ az login
 
 **Pipeline Test:**
 - Go to Azure DevOps → Pipelines
-- Select "Azure-Storage-Waste-Monitor"
+- Select "Azure-Storage-Cost-Analyzer"
 - Click "Run pipeline"
 - Wait ~5-10 minutes (depending on subscription count)
 
@@ -169,7 +175,7 @@ Script → zabbix_sender → Zabbix Trapper (10051) → Template → Triggers
 | `azure.storage.all.invalid_tags` | Int | 2 |
 | `azure.storage.all.excluded_pending_review` | Int | 5 |
 | `azure.storage.all.subscriptions_scanned` | Int | 3 |
-| `azure.storage.all.resource_details` | Text | DISK \| disk-name \| RG \| ... |
+| `azure.storage.all.resource_details` | Text | [INVALID TAG]... then DISK \| ... then SNAPSHOT \| ... |
 | `azure.storage.script.last_run_timestamp` | Unixtime | 1732114800 |
 | `azure.storage.script.execution_time_seconds` | Int | 135 |
 | `azure.storage.script.last_run_status` | Int | 0 (success) |
@@ -345,7 +351,7 @@ azureSubscription: 'Azure-Service-Connection'  # ⚠️ CHANGE THIS
 - [ ] Zabbix 7.0.5 template imported
 - [ ] Zabbix host `azure-storage-cost-analyzer` created and linked to template
 - [ ] Variable group `zabbix-rs-credentials` created with `ZABBIX_SERVER`
-- [ ] Azure service connection has Reader role on all subscriptions
+- [ ] Azure service connection has Reader + Cost Management Reader roles on all subscriptions
 - [ ] Pipeline YAML updated with correct service connection name
 - [ ] Manual test run completed successfully
 - [ ] Metrics visible in Zabbix (Latest data)
@@ -416,10 +422,16 @@ tail -f /var/log/zabbix/zabbix_server.log | grep azure-storage
 # Check current permissions
 az role assignment list --assignee <app-id> --output table
 
-# Grant Reader role
+# Grant Reader role (for resource enumeration)
 az role assignment create \
   --assignee <app-id> \
   --role "Reader" \
+  --scope "/subscriptions/<sub-id>"
+
+# Grant Cost Management Reader (for cost data)
+az role assignment create \
+  --assignee <app-id> \
+  --role "Cost Management Reader" \
   --scope "/subscriptions/<sub-id>"
 ```
 
