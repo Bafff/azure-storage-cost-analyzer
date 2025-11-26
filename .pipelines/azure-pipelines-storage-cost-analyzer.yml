@@ -35,8 +35,6 @@ variables:
     value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30  # Analyze last 30 days
-  - name: OUTPUT_DIR
-    value: '$(Build.ArtifactStagingDirectory)/reports'
   - name: AZURE_SERVICE_CONNECTION
     value: 'zabbix'
 
@@ -106,32 +104,6 @@ stages:
               AZURE_CLI_TIMEOUT: 300  # 5 minutes timeout for Azure CLI commands
             continueOnError: false
             condition: succeeded()
-
-          - task: Bash@3
-            displayName: 'Save JSON report artifact'
-            condition: always()
-            inputs:
-              targetType: 'inline'
-              script: |
-                # Create output directory
-                mkdir -p $(OUTPUT_DIR)
-
-                # Copy any generated JSON reports
-                if ls *.json 1> /dev/null 2>&1; then
-                  cp *.json $(OUTPUT_DIR)/
-                  echo "JSON reports copied to artifacts"
-                  ls -lh $(OUTPUT_DIR)/
-                else
-                  echo "No JSON reports found"
-                fi
-
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish storage cost reports'
-            condition: always()
-            inputs:
-              PathtoPublish: '$(OUTPUT_DIR)'
-              ArtifactName: 'storage-cost-reports-$(Build.BuildNumber)'
-              publishLocation: 'Container'
 
           - task: Bash@3
             displayName: 'Summary Report'
