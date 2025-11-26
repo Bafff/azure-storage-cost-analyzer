@@ -1,9 +1,9 @@
 # Zabbix Integration Guide - Azure Storage Cost Monitor
 
-**Version:** 1.0
+**Version:** 2.0
 **Zabbix Version:** 7.0.5+
 **Script:** `azure-storage-cost-analyzer.sh`
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-11-26
 
 ---
 
@@ -28,8 +28,8 @@ This integration enables automated monitoring of Azure storage waste (unattached
 
 - **Multi-subscription scanning**: Scan all Azure subscriptions in one execution
 - **Automatic Zabbix reporting**: Metrics sent directly to Zabbix via `zabbix_sender`
-- **Low-Level Discovery (LLD)**: Per-subscription metrics with dynamic discovery
-- **Cost alerting**: Warning ($100/month, $500/month) and critical ($250/month, $1000/month) thresholds
+- **Aggregate metrics**: Total waste, disk counts, and snapshot counts across all subscriptions
+- **Cost alerting**: Warning ($500/month) and critical ($1000/month) thresholds
 - **Azure DevOps native**: Designed for pipeline execution
 
 ---
@@ -62,7 +62,6 @@ This integration enables automated monitoring of Azure storage waste (unattached
     │  │ Template │  │
     │  │  Items   │  │
     │  │ Triggers │  │
-    │  │   LLD    │  │
     │  └──────────┘  │
     └────────┬───────┘
              │
@@ -129,14 +128,13 @@ After importing, verify these items exist:
 - `azure.storage.all.total_disks` - Total unattached disks
 - `azure.storage.all.total_snapshots` - Total snapshots
 - `azure.storage.all.subscriptions_scanned` - Number of subscriptions scanned
+- `azure.storage.all.invalid_tags` - Resources with malformed tags
+- `azure.storage.all.excluded_pending_review` - Resources pending review
 
 **Script Health Items:**
 - `azure.storage.script.last_run_timestamp` - Last execution timestamp
 - `azure.storage.script.execution_time_seconds` - Script duration
 - `azure.storage.script.last_run_status` - Execution status (0=success, 1=warning, 2=error)
-
-**Discovery Rule:**
-- `azure.storage.discovery.subscriptions` - Discovers Azure subscriptions
 
 ### Step 4: Configure Triggers
 
@@ -145,11 +143,10 @@ Default triggers (can be customized):
 | Trigger | Severity | Threshold |
 |---------|----------|-----------|
 | High total waste | Warning | $500/month |
-| Critical total waste | High | $1000/month |
+| Critical total waste | Average | $1000/month |
+| Invalid review tags | Warning | Any invalid tags |
 | Script hasn't run | Average | 24 hours |
-| Per-subscription high waste | Warning | $100/month |
-| Per-subscription critical waste | High | $250/month |
-| Many unattached disks | Warning | 20+ disks |
+| Script execution failed | Warning | Status > 0 |
 
 ---
 
@@ -334,14 +331,8 @@ Then run:
 | `azure.storage.all.total_disks` | Unsigned | disks | Number of unattached disks |
 | `azure.storage.all.total_snapshots` | Unsigned | snapshots | Number of snapshots |
 | `azure.storage.all.subscriptions_scanned` | Unsigned | count | Subscriptions scanned |
-
-### Per-Subscription Metrics (LLD)
-
-| Metric Key | Type | Unit | Description |
-|------------|------|------|-------------|
-| `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]` | Float | USD | Monthly waste for this subscription |
-| `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]` | Unsigned | disks | Unattached disks in this subscription |
-| `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]` | Unsigned | snapshots | Snapshots in this subscription |
+| `azure.storage.all.invalid_tags` | Unsigned | tags | Resources with malformed tags |
+| `azure.storage.all.excluded_pending_review` | Unsigned | resources | Resources pending review |
 
 ### Script Health Metrics
 

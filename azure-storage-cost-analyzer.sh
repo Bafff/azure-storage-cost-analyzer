@@ -449,7 +449,6 @@ usage() {
     echo "  unattached-disks-only  - Analyze only unattached disks (faster)"
     echo "  list-disks             - List all disks (no cost analysis)"
     echo "  list-snapshots         - List all snapshots (no cost analysis)"
-    echo "  zabbix-discovery       - Generate Zabbix LLD JSON (requires --zabbix-discovery)"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Basic Examples:"
@@ -541,14 +540,10 @@ usage() {
     echo "  --zabbix-port <port>        - Zabbix server port (default 10051)"
     echo "  --zabbix-host <hostname>    - Hostname used for metrics in Zabbix"
     echo "  --zabbix-config <path>      - Use zabbix_agentd.conf instead of server/port"
-    echo "  --zabbix-discovery <type>   - Generate LLD JSON (subscriptions|disks|snapshots)"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "Zabbix Examples:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "  # Generate discovery payload for Zabbix"
-    echo "  $0 zabbix-discovery --zabbix-discovery subscriptions --output-format json"
     echo ""
     echo "  # Send metrics using explicit server and host"
     echo "  $0 unused-report --days 7 --output-format zabbix --zabbix-send \\"
@@ -597,7 +592,6 @@ usage() {
     echo "  --zabbix-port <port>             - Zabbix server port (default: 10051)"
     echo "  --zabbix-host <hostname>         - Zabbix host name for metrics"
     echo "  --zabbix-config <path>           - Use Zabbix agent config file"
-    echo "  --zabbix-discovery <type>        - Generate LLD JSON (subscriptions|disks|snapshots|resourcegroups)"
     echo ""
     echo "Thresholds:"
     echo "  --warning-threshold <usd>    - Warn when monthly cost exceeds amount"
@@ -2225,42 +2219,13 @@ create_zabbix_batch_file() {
     echo "$hostname azure.storage.all.total_disks $total_disks" >> "$batch_file"
     echo "$hostname azure.storage.all.total_snapshots $total_snapshots" >> "$batch_file"
 
+    # Subscriptions scanned count
+    local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length // 0')
+    echo "$hostname azure.storage.all.subscriptions_scanned $sub_count" >> "$batch_file"
+
     # Script health metrics
     echo "$hostname azure.storage.script.last_run_timestamp $timestamp" >> "$batch_file"
     echo "$hostname azure.storage.script.last_run_status 0" >> "$batch_file"
-
-    # Per-subscription metrics (if available)
-    if echo "$metrics_json" | jq -e '.by_subscription' > /dev/null 2>&1; then
-        local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length')
-        echo "$hostname azure.storage.all.subscriptions_scanned $sub_count" >> "$batch_file"
-
-        # Iterate through subscriptions
-        for ((i=0; i<sub_count; i++)); do
-            local sub_id=$(echo "$metrics_json" | jq -r ".by_subscription[$i].subscription_id")
-            local sub_status=$(echo "$metrics_json" | jq -r ".by_subscription[$i].status")
-
-            if [[ "$sub_status" == "success" ]]; then
-                local sub_waste=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.total_waste_monthly")
-                local sub_disks=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.unattached_disks_count")
-                local sub_snapshots=$(echo "$metrics_json" | jq -r ".by_subscription[$i].metrics.snapshots_count")
-
-                echo "$hostname azure.storage.subscription.waste_monthly[$sub_id] $sub_waste" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.disk_count[$sub_id] $sub_disks" >> "$batch_file"
-                echo "$hostname azure.storage.subscription.snapshot_count[$sub_id] $sub_snapshots" >> "$batch_file"
-
-                # Send disk details (TEXT item)
-                local disk_details_json=$(echo "$metrics_json" | jq -r ".by_subscription[$i].disk_details // []")
-                if [[ -n "$disk_details_json" ]] && [[ "$disk_details_json" != "[]" ]]; then
-                    local disk_details_text=$(format_disk_details_text "$disk_details_json" 10)
-                    # Escape newlines for Zabbix sender (replace with literal \n)
-                    disk_details_text=$(echo "$disk_details_text" | sed ':a;N;$!ba;s/\n/\\n/g')
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] \"$disk_details_text\"" >> "$batch_file"
-                else
-                    echo "$hostname azure.storage.subscription.disk_details[$sub_id] \"No unattached disks\"" >> "$batch_file"
-                fi
-            fi
-        done
-    fi
 
     echo "$batch_file"
 }
@@ -2342,113 +2307,6 @@ send_batch_to_zabbix_with_config() {
         return 1
     fi
 }
-
-# ============================================================================
-# ZABBIX LOW-LEVEL DISCOVERY (LLD) FUNCTIONS
-# ============================================================================
-
-# Function to generate LLD JSON for subscriptions
-# Usage: generate_subscriptions_lld
-generate_subscriptions_lld() {
-    log_verbose "Generating subscription LLD JSON..."
-
-    local subscriptions_json=$(get_subscriptions_with_names)
-
-    if [[ -z "$subscriptions_json" ]]; then
-        echo '{"data":[]}'
-        return 1
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$subscriptions_json" | jq '{data: [.[] | {
-        "{#SUBSCRIPTION_ID}": .id,
-        "{#SUBSCRIPTION_NAME}": .name
-    }]}'
-}
-
-# Function to generate LLD JSON for unattached disks
-# Usage: generate_disks_lld "subscription-id" "resource-group"
-generate_disks_lld() {
-    local subscription_id="$1"
-    local resource_group="${2:-}"
-
-    log_verbose "Generating disks LLD JSON for subscription: $subscription_id..."
-
-    local disks_json=$(list_unattached_disks "$subscription_id" "$resource_group" "false")
-
-    if [[ -z "$disks_json" ]] || ! echo "$disks_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$disks_json" | jq '{data: [.[] | {
-        "{#DISK_NAME}": .Name,
-        "{#DISK_ID}": .Id,
-        "{#DISK_SIZE_GB}": (.Size | tostring),
-        "{#DISK_RG}": .ResourceGroup,
-        "{#DISK_STATE}": .State,
-        "{#DISK_SKU}": .Sku,
-        "{#DISK_CREATED}": .Created,
-        "{#SUBSCRIPTION_ID}": "'"$subscription_id"'"
-    }]}'
-}
-
-# Function to generate LLD JSON for snapshots
-# Usage: generate_snapshots_lld "subscription-id" "resource-group"
-generate_snapshots_lld() {
-    local subscription_id="$1"
-    local resource_group="${2:-}"
-
-    log_verbose "Generating snapshots LLD JSON for subscription: $subscription_id..."
-
-    local snapshots_json=$(get_all_snapshots_with_details "$subscription_id" "$resource_group")
-
-    if [[ -z "$snapshots_json" ]] || ! echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    # Convert to Zabbix LLD format
-    echo "$snapshots_json" | jq '{data: [.[] | {
-        "{#SNAPSHOT_NAME}": .Name,
-        "{#SNAPSHOT_ID}": .Id,
-        "{#SNAPSHOT_SIZE_GB}": (.Size | tostring),
-        "{#SNAPSHOT_RG}": .ResourceGroup,
-        "{#SNAPSHOT_SKU}": .Sku,
-        "{#SNAPSHOT_CREATED}": .Created,
-        "{#SUBSCRIPTION_ID}": "'"$subscription_id"'"
-    }]}'
-}
-
-# Function to generate LLD JSON for resource groups
-# Usage: generate_resource_groups_lld "subscription-id"
-generate_resource_groups_lld() {
-    local subscription_id="$1"
-
-    log_verbose "Generating resource group LLD JSON for subscription: ${subscription_id:-all subscriptions}..."
-
-    local groups_json
-    if [[ -n "$subscription_id" ]]; then
-        groups_json=$(az_with_timeout group list --subscription "$subscription_id" -o json 2>/dev/null) || groups_json="[]"
-    else
-        groups_json=$(az_with_timeout group list -o json 2>/dev/null) || groups_json="[]"
-    fi
-
-    if [[ -z "$groups_json" ]] || [[ "$groups_json" == "[]" ]]; then
-        echo '{"data":[]}'
-        return 0
-    fi
-
-    echo "$groups_json" | jq '{data: [.[] | {
-        "{#RG_NAME}": .name,
-        "{#SUBSCRIPTION_ID}": (.id | split("/")[2])
-    }]}' 2>/dev/null || echo '{"data":[]}'
-}
-
-# ============================================================================
-# END ZABBIX INTEGRATION FUNCTIONS
-# ============================================================================
 
 # Function to retry Azure API calls with exponential backoff
 retry_azure_api() {
@@ -4074,7 +3932,6 @@ main() {
     local zabbix_port="10051"     # Zabbix server port (default: 10051)
     local zabbix_host=""          # Zabbix host name for metrics
     local zabbix_config_file=""   # Alternative: use zabbix_agentd.conf
-    local zabbix_discovery=""     # LLD discovery type: subscriptions|disks|snapshots|resourcegroups
 
     local cli_warning_threshold=""
     local cli_critical_threshold=""
@@ -4364,24 +4221,6 @@ main() {
                 zabbix_config_file="$2"
                 shift 2
                 ;;
-            --zabbix-discovery)
-                if [[ -z "${2:-}" ]]; then
-                    echo "Error: --zabbix-discovery requires a type (subscriptions|disks|snapshots|resourcegroups)"
-                    usage
-                fi
-                zabbix_discovery="$2"
-                # Validate discovery type
-                case "$zabbix_discovery" in
-                    subscriptions|disks|snapshots|resourcegroups)
-                        # Valid
-                        ;;
-                    *)
-                        echo "Error: Invalid discovery type '$zabbix_discovery'. Must be: subscriptions, disks, snapshots, or resourcegroups"
-                        exit $EXIT_CONFIG_ERROR
-                        ;;
-                esac
-                shift 2
-                ;;
             --skip-tagged)
                 skip_tagged="true"
                 shift
@@ -4534,33 +4373,6 @@ main() {
             ;;
         "list-snapshots")
             list_snapshots "$subscription_id"
-            exit $EXIT_SUCCESS
-            ;;
-        "zabbix-discovery")
-            # Handle Zabbix Low-Level Discovery
-            if [[ -z "$zabbix_discovery" ]]; then
-                echo "Error: --zabbix-discovery flag required with type (subscriptions|disks|snapshots)"
-                usage
-            fi
-
-            case "$zabbix_discovery" in
-                subscriptions)
-                    generate_subscriptions_lld
-                    ;;
-                disks)
-                    generate_disks_lld "$subscription_id" "$resource_group"
-                    ;;
-                snapshots)
-                    generate_snapshots_lld "$subscription_id" "$resource_group"
-                    ;;
-                resourcegroups)
-                    generate_resource_groups_lld "$subscription_id"
-                    ;;
-                *)
-                    echo "Error: Invalid discovery type: $zabbix_discovery"
-                    exit $EXIT_CONFIG_ERROR
-                    ;;
-            esac
             exit $EXIT_SUCCESS
             ;;
         "unattached-disks-only")

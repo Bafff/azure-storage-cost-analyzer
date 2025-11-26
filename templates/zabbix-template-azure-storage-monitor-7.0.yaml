@@ -9,11 +9,16 @@ zabbix_export:
     template: Azure Storage Cost Monitor
     name: Azure Storage Cost Monitor
     description: |
-      Monitors Azure storage waste (unattached disks and snapshots) across multiple subscriptions.
+      Monitors Azure storage waste (unattached disks and snapshots) - aggregate metrics only.
 
       Script: azure-storage-cost-analyzer.sh
-      Version: 1.0
+      Version: 2.0
       Compatible: Zabbix 7.0+
+
+      Metrics:
+        - Total monthly waste (USD)
+        - Total unattached disks/snapshots
+        - Script health (last run, status, duration)
 
       Usage:
         ./azure-storage-cost-analyzer.sh unused-report \
@@ -210,138 +215,6 @@ zabbix_export:
         tags:
         - tag: scope
           value: monitoring
-    discovery_rules:
-    - uuid: bf8a1711402d494c922c619b76cc5343
-      name: Azure Subscriptions Discovery
-      type: TRAP
-      key: azure.storage.discovery.subscriptions
-      delay: 1h
-      lifetime: 7d
-      description: Discovers Azure subscriptions for per-subscription monitoring
-      item_prototypes:
-      - uuid: 769b0b8b58ab48daba50e51576a3a2a7
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Monthly Waste'
-        type: TRAP
-        key: azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: 365d
-        value_type: FLOAT
-        units: USD
-        description: Monthly waste for subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-      - uuid: eb20f69969ec4f17a3e4bc82a8070b06
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks'
-        type: TRAP
-        key: azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: 365d
-        value_type: UNSIGNED
-        units: disks
-        description: Unattached disks in subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-      - uuid: 2571cdc61d094b72b19dbbea0e7ac45a
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Snapshots'
-        type: TRAP
-        key: azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: 365d
-        value_type: UNSIGNED
-        units: snapshots
-        description: Snapshots in subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-      - uuid: 1a1dff1acd504ad29ede2b50b031a16e
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Invalid Tags'
-        type: TRAP
-        key: azure.storage.subscription.invalid_tags[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: 365d
-        value_type: UNSIGNED
-        units: tags
-        description: Resources with malformed review date tags in subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-        - tag: type
-          value: tag-management
-      - uuid: 4fc24769d57c475a8c261cd993586f94
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Excluded Pending Review'
-        type: TRAP
-        key: azure.storage.subscription.excluded_pending_review[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: 365d
-        value_type: UNSIGNED
-        units: resources
-        description: Resources excluded due to valid future review dates in subscription
-          {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-        - tag: type
-          value: tag-management
-      - uuid: 8f3a5c9d2e7b4a1f9c6d8e2a5b7f3c1d
-        name: 'Subscription [{#SUBSCRIPTION_NAME}]: Unattached Disks Details'
-        type: TRAP
-        key: azure.storage.subscription.disk_details[{#SUBSCRIPTION_ID}]
-        delay: '0'
-        history: 90d
-        trends: '0'
-        value_type: TEXT
-        description: 'Detailed list of unattached disks in subscription {#SUBSCRIPTION_NAME}: Resource Group, Disk Name, Size, Monthly Cost'
-        tags:
-        - tag: subscription
-          value: "{#SUBSCRIPTION_NAME}"
-        - tag: type
-          value: resources
-      trigger_prototypes:
-      - uuid: 63fa9f275ba74a1bae87e5e11d16c4ce
-        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>100
-        name: 'High storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
-        priority: WARNING
-        manual_close: 'YES'
-        description: Monthly storage waste exceeds $100 in subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: scope
-          value: cost
-      - uuid: 4ddf0227bd7543cfad9c160c7e5f71c2
-        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}])>250
-        name: 'Critical storage waste in {#SUBSCRIPTION_NAME}: ${ITEM.LASTVALUE}'
-        priority: AVERAGE
-        manual_close: 'YES'
-        description: Monthly storage waste exceeds $250 in subscription {#SUBSCRIPTION_NAME}
-        tags:
-        - tag: scope
-          value: cost
-      - uuid: ab5799dda73749a3b94b27a8827b1c59
-        expression: last(/Azure Storage Cost Monitor/azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}])>{$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
-        name: 'Unattached disks in {#SUBSCRIPTION_NAME}: {ITEM.LASTVALUE}'
-        priority: WARNING
-        manual_close: 'YES'
-        description: |
-          {ITEM.LASTVALUE} unattached disk(s) detected in subscription {#SUBSCRIPTION_NAME}
-          Threshold: {$UNATTACHED_DISK_THRESHOLD:"{#SUBSCRIPTION_ID}"}
-
-          View disk details (names, resource groups, costs):
-          {$ZABBIX_URL}/zabbix.php?action=latest.view&filter_key=disk_details
-        url: '{$ZABBIX_URL}/zabbix.php?action=latest.view&filter_key=disk_details'
-        url_name: 'Check disks'
-        tags:
-        - tag: scope
-          value: resources
-    macros:
-    - macro: '{$UNATTACHED_DISK_THRESHOLD}'
-      value: '0'
-      description: Warning threshold for unattached disks per subscription (default 0 = alert on any unattached disk; override per subscription with {$UNATTACHED_DISK_THRESHOLD:"<SUBSCRIPTION_ID>"}; set very high to mute)
     valuemaps:
     - uuid: ab7c2574a348422597ada338f9098c2a
       name: Script Status
