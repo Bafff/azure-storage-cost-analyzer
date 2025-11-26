@@ -85,23 +85,15 @@ stages:
               # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
-              scriptLocation: 'scriptPath'
-              scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
+              scriptLocation: 'inlineScript'
               # --skip-tagged: Exclude resources with valid future Resource-Next-Review-Date tags
               # This allows teams to mark resources as "reviewed" and avoid alerts until the review date expires
-              arguments: >-
-                unused-report
-                --subscriptions all
-                --days $(SCAN_DAYS)
-                --output-format json
-                --skip-tagged
-                --zabbix-send
-                --zabbix-server $(ZABBIX_SERVER)
-                --zabbix-host $(ZABBIX_HOST)
-                --zabbix-port 10051
-                --quiet
-                ${{ if ne(variables['EXCLUDE_RESOURCE_GROUPS'], '') }}:
-                  --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)
+              inlineScript: |
+                ARGS="unused-report --subscriptions all --days $(SCAN_DAYS) --output-format json --skip-tagged --zabbix-send --zabbix-server $(ZABBIX_SERVER) --zabbix-host $(ZABBIX_HOST) --zabbix-port 10051 --quiet"
+                if [ -n "$(EXCLUDE_RESOURCE_GROUPS)" ]; then
+                  ARGS="$ARGS --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)"
+                fi
+                ./azure-storage-cost-analyzer.sh $ARGS
               workingDirectory: '$(Build.SourcesDirectory)'
               failOnStandardError: false
             env:
