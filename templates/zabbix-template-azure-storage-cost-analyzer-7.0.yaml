@@ -6,8 +6,8 @@ zabbix_export:
     name: Templates/Cloud
   templates:
   - uuid: '05749663490c4538a46f8a0e8fc98ee5'
-    template: Azure Storage Cost Monitor
-    name: Azure Storage Cost Monitor
+    template: Ark Template Azure Storage Cost Monitor
+    name: Ark Template Azure Storage Cost Monitor
     description: |
       Monitors Azure storage waste (unattached disks and snapshots) - aggregate metrics only.
 
@@ -62,7 +62,7 @@ zabbix_export:
         value: azure
       triggers:
       - uuid: 6a933dd06756462e979d9be2d97d2227
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_WARNING_THRESHOLD}
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_WARNING_THRESHOLD}
         name: 'High total Azure storage waste: ${ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
@@ -74,7 +74,7 @@ zabbix_export:
         - tag: cloud
           value: azure
       - uuid: 48821f2411d24cd7bd29a7e5f826b5d3
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_CRITICAL_THRESHOLD}
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_CRITICAL_THRESHOLD}
         name: 'Critical total Azure storage waste: ${ITEM.LASTVALUE}'
         priority: AVERAGE
         manual_close: 'YES'
@@ -100,7 +100,7 @@ zabbix_export:
         value: storage
       triggers:
       - uuid: dca5aa4891b34c4eacfc20e795c962f9
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_disks)>{$DISK_THRESHOLD}
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.all.total_disks)>{$DISK_THRESHOLD}
         name: 'Unattached disks detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
@@ -129,7 +129,7 @@ zabbix_export:
         value: storage
       triggers:
       - uuid: 2a3de244a9ec4ba1aa060b5695b9692a
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_snapshots)>{$SNAPSHOT_THRESHOLD}
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.all.total_snapshots)>{$SNAPSHOT_THRESHOLD}
         name: 'Snapshots detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
@@ -173,7 +173,7 @@ zabbix_export:
         value: tag-management
       triggers:
       - uuid: 1e7d3a6653fe4ce3904c5bd80e3cc31f
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.invalid_tags)>0
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.all.invalid_tags)>0
         name: 'Invalid review date tags detected: {ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
@@ -214,7 +214,7 @@ zabbix_export:
         value: monitoring
       triggers:
       - uuid: 1f7d1b0723904bd89229453ca1655b6c
-        expression: now()-last(/Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)>86400
+        expression: now()-last(/Ark Template Azure Storage Cost Monitor/azure.storage.script.last_run_timestamp)>86400
         name: Azure storage monitor script hasn't run in 24 hours
         priority: AVERAGE
         manual_close: 'YES'
@@ -251,7 +251,7 @@ zabbix_export:
         value: monitoring
       triggers:
       - uuid: d6b4906d7b614fbb94d04ba882f36b00
-        expression: last(/Azure Storage Cost Monitor/azure.storage.script.last_run_status)>0
+        expression: last(/Ark Template Azure Storage Cost Monitor/azure.storage.script.last_run_status)>0
         name: Azure storage monitor script execution failed
         priority: WARNING
         manual_close: 'YES'
