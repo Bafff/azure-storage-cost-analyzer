@@ -2244,35 +2244,60 @@ create_zabbix_batch_file() {
     # Format: TYPE | NAME | RG | SUBSCRIPTION | SIZE_GB
     local resource_details=""
 
-    # Extract disk details from all subscriptions
+    # Extract disk details from all subscriptions (limit to first 25)
     local disk_details
+    local disk_count_total
+    disk_count_total=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.disk_details) | .disk_details[]] | length
+        elif .disk_details then
+            .disk_details | length
+        else 0
+        end
+    ' 2>/dev/null || echo "0")
+
     disk_details=$(echo "$metrics_json" | jq -r '
         if .by_subscription then
             [.by_subscription[] | select(.disk_details) | .disk_details[] as $d |
              "DISK | \($d.name) | \($d.resource_group) | \(.subscription_name // .subscription_id) | \($d.size_gb)GB"]
-            | join("\n")
+            | .[0:25] | join("\n")
         elif .disk_details then
             [.disk_details[] | "DISK | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
-            | join("\n")
+            | .[0:25] | join("\n")
         else ""
         end
     ' 2>/dev/null || echo "")
 
-    # Extract snapshot details from all subscriptions
+    # Extract snapshot details from all subscriptions (limit to first 25)
     local snapshot_details
+    local snapshot_count_total
+    snapshot_count_total=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.snapshot_details) | .snapshot_details[]] | length
+        elif .snapshot_details then
+            .snapshot_details | length
+        else 0
+        end
+    ' 2>/dev/null || echo "0")
+
     snapshot_details=$(echo "$metrics_json" | jq -r '
         if .by_subscription then
             [.by_subscription[] | select(.snapshot_details) | .snapshot_details[] as $s |
              "SNAPSHOT | \($s.name) | \($s.resource_group) | \(.subscription_name // .subscription_id) | \($s.size_gb)GB"]
-            | join("\n")
+            | .[0:25] | join("\n")
         elif .snapshot_details then
             [.snapshot_details[] | "SNAPSHOT | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
-            | join("\n")
+            | .[0:25] | join("\n")
         else ""
         end
     ' 2>/dev/null || echo "")
 
-    # Combine disk and snapshot details
+    # Combine disk and snapshot details with truncation notice
+    local truncation_notice=""
+    if [[ $disk_count_total -gt 25 || $snapshot_count_total -gt 25 ]]; then
+        truncation_notice="... (showing 25 of $disk_count_total disks, 25 of $snapshot_count_total snapshots)"
+    fi
+
     if [[ -n "$disk_details" && -n "$snapshot_details" ]]; then
         resource_details="${disk_details}"$'\n'"${snapshot_details}"
     elif [[ -n "$disk_details" ]]; then
@@ -2282,6 +2307,8 @@ create_zabbix_batch_file() {
     else
         resource_details="No unattached disks or snapshots found"
     fi
+
+    [[ -n "$truncation_notice" ]] && resource_details="${resource_details}"$'\n'"${truncation_notice}"
 
     # Escape newlines and quotes for zabbix_sender batch format (one metric per line)
     # Use awk for portable newline replacement (works on both BSD/macOS and GNU/Linux)
