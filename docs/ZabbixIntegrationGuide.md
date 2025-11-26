@@ -169,7 +169,50 @@ Default triggers (thresholds controlled by macros):
 | Script hasn't run | Average | 24 hours |
 | Script execution failed | Warning | Status > 0 |
 
-**Resource Details:** When disk or snapshot triggers fire, check the `azure.storage.all.resource_details` item for a list of affected resources with their names, resource groups, and sizes.
+### Trigger Links and Resource Details
+
+The following triggers include a **"Check Resource details"** link that navigates directly to the Resource Details item in Latest Data:
+
+- **Unattached disks detected** - Click link to see disk names, resource groups, and sizes
+- **Snapshots detected** - Click link to see snapshot names, resource groups, and sizes
+- **Invalid review tags detected** - Click link to identify resources with malformed tags
+
+When a trigger fires:
+1. Open the trigger in Zabbix (**Monitoring** → **Problems**)
+2. Click the **"Check Resource details"** link in the trigger's Links section
+3. View the `Resource Details` item to see affected resources
+4. Take action based on the resource list (delete, attach, fix tags, etc.)
+
+### Best Practices: Adding Trigger URL Links
+
+When adding URL links to Zabbix triggers that reference other items, follow these guidelines:
+
+**URL Format for Zabbix 7.0+:**
+```
+/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=<Item Display Name>&filter_set=1
+```
+
+**Key points:**
+- Use `hostids[]` (not `filter_hostids[]`) for host filtering
+- Use `name=` with the **item's display name** (not the key), URL-encoded
+- Example: `name=Resource%20Details` (not `name=resource_details`)
+- Add `filter_set=1` to apply the filter immediately
+- Use `url_name` property to set a descriptive link label (e.g., "Check Resource details")
+
+**Template YAML example:**
+```yaml
+triggers:
+- uuid: abc123...
+  expression: last(/Template Name/item.key)>0
+  name: 'Alert: {ITEM.LASTVALUE}'
+  url: '/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1'
+  url_name: Check Resource details
+```
+
+**Limitations:**
+- The `{ITEM.ID}` macro refers to the triggering item, not other items
+- Cannot dynamically link to `history.php?itemids[]=XXX` for a different item
+- Use Latest Data filtering by item name as the workaround
 
 ---
 
@@ -190,6 +233,12 @@ Your Azure DevOps agents need `zabbix_sender` installed. Add this to your pipeli
       sudo apt-get install -y zabbix-sender jq bc
 ```
 
+### Agent Pool Options (self-hosted vs hosted)
+
+- **Repository default:** The shipped pipeline YAML uses a self-hosted Linux pool so you control outbound access to Zabbix. Change `pool.name` to the name of your pool; keep the `Agent.OS -equals Linux` demand.
+- **Self-hosted requirements:** Agent must reach your Zabbix server on port 10051 and be able to install or already have `zabbix-sender`, `jq`, `bc`, and `coreutils` available (via `sudo apt-get` or preinstall).
+- **Hosted option:** If your Zabbix endpoint is internet-accessible, you can switch to Microsoft-hosted agents by replacing the `pool` block with `vmImage: 'ubuntu-latest'`.
+
 ### Pipeline YAML Example
 
 Create `.pipelines/azure-pipelines-storage-cost-analyzer.yml`:
@@ -206,7 +255,12 @@ schedules:
     always: true  # Run even if no code changes
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: '<your-self-hosted-linux-pool>'  # Update to your pool name
+  demands:
+    - Agent.OS -equals Linux
+# Hosted alternative:
+# pool:
+#   vmImage: 'ubuntu-latest'
 
 variables:
   - group: zabbix-rs-credentials  # Variable group with ZABBIX_SERVER
