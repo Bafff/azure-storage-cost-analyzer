@@ -4559,10 +4559,7 @@ main() {
                         local timestamp=$(date +%s)
                         local batch_file=$(create_zabbix_batch_file "$zabbix_host" "$timestamp" "$report_output")
 
-                        if send_batch_to_zabbix "$zabbix_server" "$zabbix_port" "$batch_file"; then
-                            log_progress "Metrics successfully sent to Zabbix"
-                        else
-                            log_progress "ERROR: Failed to send metrics to Zabbix"
+                        if ! send_batch_to_zabbix "$zabbix_server" "$zabbix_port" "$batch_file"; then
                             exit_code=1
                         fi
                     elif [[ -n "$zabbix_config_file" ]]; then
@@ -4570,10 +4567,7 @@ main() {
                         local timestamp=$(date +%s)
                         local batch_file=$(create_zabbix_batch_file "${zabbix_host:-azure-storage-cost-analyzer}" "$timestamp" "$report_output")
 
-                        if send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
-                            log_progress "Metrics successfully sent to Zabbix"
-                        else
-                            log_progress "ERROR: Failed to send metrics to Zabbix"
+                        if ! send_batch_to_zabbix_with_config "$zabbix_config_file" "$batch_file"; then
                             exit_code=1
                         fi
                     else
