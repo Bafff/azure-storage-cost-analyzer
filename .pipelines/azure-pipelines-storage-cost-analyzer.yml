@@ -121,13 +121,6 @@ stages:
                 echo "Scan Period: Last $(SCAN_DAYS) days"
                 echo "========================================"
 
-                # Show quick summary if JSON exists
-                if [ -f "unused-resources-report-*.json" ]; then
-                  echo ""
-                  echo "Quick Summary:"
-                  jq -r '"Total Waste: $\(.aggregated_metrics.total_waste_monthly_usd)/month (\(.aggregated_metrics.total_waste_annual_usd)/year)\nUnattached Disks: \(.aggregated_metrics.total_unattached_disks)\nSnapshots: \(.aggregated_metrics.total_snapshots)\nSubscriptions: \(.subscriptions_scanned)"' unused-resources-report-*.json || true
-                fi
-
 # Alternative: Single subscription scan (uncomment if needed)
 #      - job: ScanSingleSubscription
 #        displayName: 'Scan Specific Subscription'
