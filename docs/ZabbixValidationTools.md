@@ -46,7 +46,6 @@ There are several approaches to validating Zabbix templates:
 - ✅ Trigger expressions (parentheses matching, syntax basics)
 - ✅ Trigger priority values (0-5)
 - ✅ Macro naming conventions (`{$MACRO_NAME}`)
-- ✅ Discovery rules and item prototypes
 - ✅ Template groups
 
 ### Zabbix 7.0 Support

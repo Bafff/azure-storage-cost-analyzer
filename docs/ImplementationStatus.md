@@ -461,8 +461,6 @@ arguments: |
 | Zabbix integration guide | `ZabbixIntegrationGuide.md` |
 | Quick start guide | `QuickStartGuide.md` |
 | Implementation PRD | `PrdZabbixImplementation.md` |
-| Test results | `TestResults.md` |
-| TODO/changelog | `TODO.md` |
 
 ---
 

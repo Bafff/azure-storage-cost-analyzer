@@ -47,13 +47,11 @@ For each changed file, determine what docs need updating:
 
 **If test scripts changed (`tests/test-*.sh`):**
 
-- May update: `docs/TestResults.md`
 - Consider: `README.md` (Tests section)
 
 **If pipeline changed (`.pipelines/*.yml`, `.github/workflows/*.yml`):**
 
 - May update: `README.md` (Pipeline section)
-- May update: `docs/GithubMigrationGuide.md`
 - Consider: `docs/Linting.md` if CI/CD linting changed
 
 **If tag exclusion logic changed:**
@@ -105,10 +103,6 @@ Show me:
 
 - [ ] Update `docs/QuickStartGuide.md` - usage example outdated
 - [ ] Update `docs/ImplementationStatus.md` - feature status changed
-
-**Priority 3 (Nice to have)**:
-
-- [ ] Update `docs/TestResults.md` - test coverage expanded
 
 ### Proposed Changes
 

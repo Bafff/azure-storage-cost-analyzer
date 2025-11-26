@@ -5,6 +5,10 @@
 **Author:** DevOps Team
 **Status:** Draft
 
+> **Note (2025-11):** LLD (Low-Level Discovery) described in this PRD was later simplified.
+> The current implementation uses aggregate metrics only (no per-subscription discovery).
+> See `docs/ZabbixIntegrationGuide.md` for current implementation details.
+
 ---
 
 ## Table of Contents

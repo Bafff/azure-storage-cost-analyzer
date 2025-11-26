@@ -123,7 +123,6 @@ python3 templates/validate-zabbix-template.py --all
 - Zabbix version compatibility (optimized for 7.0+)
 - UUID format (both dashed and non-dashed formats)
 - Item validation (keys, value types, duplicate detection)
-- Discovery rules and item prototypes
 - Trigger expressions and priority levels
 - Macro naming conventions
 - Template groups and metadata

@@ -78,7 +78,6 @@ All documentation files use PascalCase naming:
 2. **docs/QuickStartGuide.md**: Detailed getting started instructions
 3. **docs/ZabbixIntegrationGuide.md**: Comprehensive Zabbix setup
 4. **docs/ImplementationStatus.md**: Feature tracking and status
-5. **docs/TestResults.md**: Test execution results
 
 ### When to Update Documentation
 
@@ -105,7 +104,6 @@ Update docs when:
 3. **After Making Changes**:
    - Use `/doc-update` to identify documentation updates
    - Update `docs/ImplementationStatus.md` if feature status changed
-   - Update `docs/TestResults.md` if tests were modified
    - Review all changes before committing
 
 ## Common Tasks
