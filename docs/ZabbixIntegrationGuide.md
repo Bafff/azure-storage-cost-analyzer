@@ -147,6 +147,7 @@ Template macros allow you to customize thresholds without modifying triggers:
 | `{$SNAPSHOT_THRESHOLD}` | 0 | Alert when snapshot count exceeds this value |
 | `{$WASTE_WARNING_THRESHOLD}` | 100 | Warning threshold for monthly waste (USD) |
 | `{$WASTE_CRITICAL_THRESHOLD}` | 200 | Critical threshold for monthly waste (USD) |
+| `{$ZABBIX_URL}` | https://your-zabbix-server.com | Base URL for clickable links in trigger descriptions |
 
 To customize thresholds per-host:
 1. Navigate to: **Configuration** → **Hosts**
@@ -227,10 +228,12 @@ When creating or updating triggers, ensure each trigger includes:
 ```
 {ITEM.LASTVALUE} issue(s) detected.
 
-Check Resource details: /zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
+Check Resource details: {$ZABBIX_URL}/zabbix.php?action=latest.view&hostids[]={HOST.ID}&name=Resource%20Details&filter_set=1
 
 Action: [Specific steps to resolve the issue]
 ```
+
+**Note:** Use the `{$ZABBIX_URL}` macro to create full URLs that work as clickable links in notifications and descriptions.
 
 ---
 
