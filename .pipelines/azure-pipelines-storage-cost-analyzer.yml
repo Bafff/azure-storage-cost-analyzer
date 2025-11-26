@@ -38,7 +38,7 @@ variables:
   - name: AZURE_SERVICE_CONNECTION
     value: 'zabbix'
   - name: EXCLUDE_RESOURCE_GROUPS
-    value: ''  # Default empty, override in variable group
+    value: 'no-rg-excluded'  # Dummy default, override in variable group with real RG names
 
 stages:
   - stage: Analyze
@@ -89,11 +89,17 @@ stages:
               # --skip-tagged: Exclude resources with valid future Resource-Next-Review-Date tags
               # This allows teams to mark resources as "reviewed" and avoid alerts until the review date expires
               inlineScript: |
-                ARGS="unused-report --subscriptions all --days $(SCAN_DAYS) --output-format json --skip-tagged --zabbix-send --zabbix-server $(ZABBIX_SERVER) --zabbix-host $(ZABBIX_HOST) --zabbix-port 10051 --quiet"
-                if [ -n "$(EXCLUDE_RESOURCE_GROUPS)" ]; then
-                  ARGS="$ARGS --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)"
-                fi
-                ./azure-storage-cost-analyzer.sh $ARGS
+                ./azure-storage-cost-analyzer.sh unused-report \
+                  --subscriptions all \
+                  --days $(SCAN_DAYS) \
+                  --output-format json \
+                  --skip-tagged \
+                  --zabbix-send \
+                  --zabbix-server $(ZABBIX_SERVER) \
+                  --zabbix-host $(ZABBIX_HOST) \
+                  --zabbix-port 10051 \
+                  --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \
+                  --quiet
               workingDirectory: '$(Build.SourcesDirectory)'
               failOnStandardError: false
             env:
@@ -115,7 +121,7 @@ stages:
                 echo "Zabbix Server: $(ZABBIX_SERVER)"
                 echo "Zabbix Host: $(ZABBIX_HOST)"
                 echo "Scan Period: Last $(SCAN_DAYS) days"
-                echo "Excluded RGs: ${EXCLUDE_RESOURCE_GROUPS:-none}"
+                echo "Excluded RGs: $(EXCLUDE_RESOURCE_GROUPS)"
                 echo ""
                 echo "Command executed:"
                 echo "  ./azure-storage-cost-analyzer.sh unused-report \\"
@@ -127,10 +133,8 @@ stages:
                 echo "    --zabbix-server $(ZABBIX_SERVER) \\"
                 echo "    --zabbix-host $(ZABBIX_HOST) \\"
                 echo "    --zabbix-port 10051 \\"
-                echo "    --quiet${EXCLUDE_RESOURCE_GROUPS:+ \\\\}"
-                if [ -n "$(EXCLUDE_RESOURCE_GROUPS)" ]; then
-                  echo "    --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS)"
-                fi
+                echo "    --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \\"
+                echo "    --quiet"
                 echo "========================================"
 
 # Alternative: Single subscription scan (uncomment if needed)
