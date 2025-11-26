@@ -609,10 +609,34 @@ send_metrics_to_zabbix() {
 
 ### 2.2 Low-Level Discovery (LLD)
 
-**Priority:** P1 (High)
+> **⚠️ DEPRECATED (2025-11):** LLD was removed in favor of aggregate metrics only.
+> The `--zabbix-discovery` command no longer exists. Use `unused-report --zabbix-send` instead.
+> See `docs/ZabbixIntegrationGuide.md` for current implementation.
 
-**Requirement:**
-Support Zabbix Low-Level Discovery for automatic item creation.
+**Current Workflow (replaces LLD):**
+
+```bash
+# Send aggregate metrics to Zabbix
+./azure-storage-cost-analyzer.sh unused-report \
+  --subscriptions all \
+  --days 30 \
+  --output-format json \
+  --zabbix-send \
+  --zabbix-server your-zabbix-server.com \
+  --zabbix-host azure-storage-cost-analyzer
+```
+
+**Metrics Sent:**
+- `azure.storage.all.total_waste.monthly` - Total waste USD
+- `azure.storage.all.total_disks` - Unattached disk count
+- `azure.storage.all.total_snapshots` - Snapshot count
+- `azure.storage.all.subscriptions_scanned` - Subscriptions scanned
+- `azure.storage.all.invalid_tags` - Invalid tag count
+- `azure.storage.all.excluded_pending_review` - Pending review count
+- `azure.storage.script.*` - Script health metrics
+
+<details>
+<summary>Original LLD specification (historical, not implemented)</summary>
 
 **Discovery Keys:**
 
@@ -630,71 +654,16 @@ azure.storage.disks.discovery
 azure.storage.snapshots.discovery
 ```
 
-**LLD JSON Format:**
-
-```json
-{
-  "data": [
-    {
-      "{#SUBSCRIPTION_ID}": "2f929c0a-d1f4-480c-a610-f75d1862fd53",
-      "{#SUBSCRIPTION_NAME}": "Production Subscription"
-    },
-    {
-      "{#SUBSCRIPTION_ID}": "03d76f78-4676-4116-b53a-162546996207",
-      "{#SUBSCRIPTION_NAME}": "Dev/Test Subscription"
-    }
-  ]
-}
-```
-
-**Disk Discovery:**
-
-```json
-{
-  "data": [
-    {
-      "{#DISK_NAME}": "pvc-ef3fc2dc-b478-4687-acd5-613b206124f5",
-      "{#DISK_ID}": "/subscriptions/.../disks/pvc-ef3fc2dc...",
-      "{#DISK_SIZE_GB}": "8",
-      "{#DISK_RG}": "mc_airflow-data-aks-rg_airflow-data-aks_centralus",
-      "{#DISK_STATE}": "Unattached",
-      "{#DISK_SKU}": "StandardSSD_LRS",
-      "{#DISK_CREATED}": "2025-08-04",
-      "{#SUBSCRIPTION_ID}": "2f929c0a-d1f4-480c-a610-f75d1862fd53"
-    }
-  ]
-}
-```
-
-**Usage:**
-
-```bash
-# Generate LLD JSON
-./script.sh --zabbix-discovery subscriptions --output-format json
-
-./script.sh --zabbix-discovery disks --output-format json
-
-./script.sh --zabbix-discovery snapshots --output-format json
-```
-
 **Zabbix Item Prototypes (Created via LLD):**
 
 ```
-# Per-disk metrics
-azure.storage.disk[{#DISK_NAME}].size_gb
-azure.storage.disk[{#DISK_NAME}].cost_monthly
-azure.storage.disk[{#DISK_NAME}].age_days
-azure.storage.disk[{#DISK_NAME}].state
-
 # Per-subscription metrics
 azure.storage.subscription.total_waste[{#SUBSCRIPTION_ID}]
 azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]
 azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]
-
-# Per-resource-group metrics
-azure.storage.rg[{#RG_NAME}].disk_count
-azure.storage.rg[{#RG_NAME}].total_cost
 ```
+
+</details>
 
 ---
 
@@ -2397,14 +2366,11 @@ sudo systemctl start azure-storage-cost-analyzer.timer
 ```bash
 # /etc/cron.d/azure-storage-cost-analyzer
 
-# Run every hour at :05
-5 * * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --quiet 2>&1 | logger -t azure-storage-cost-analyzer
+# Run analysis and send to Zabbix - daily at 2 AM
+0 2 * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --zabbix-send --quiet 2>&1 | logger -t azure-storage-cost-analyzer
 
-# Daily detailed report
+# Daily detailed JSON report
 0 8 * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --config /etc/azure-storage-cost-analyzer/config.conf unused-report --output-format json > /var/log/azure-storage-cost-analyzer/daily-$(date +\%Y\%m\%d).json
-
-# LLD for Zabbix - every 6 hours
-0 */6 * * * azure-monitor /usr/local/bin/azure-storage-cost-analyzer --zabbix-discovery subscriptions --output-format json --quiet
 ```
 
 ---
