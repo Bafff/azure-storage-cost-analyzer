@@ -72,4 +72,8 @@ Static sanity tests live in the `tests/` directory:
 They run in CI via `.github/workflows/lint.yml`. Add cloud-backed tests separately when credentials are available.
 
 ## Pipeline
-`.pipelines/azure-pipelines-storage-cost-analyzer.yml` runs the analyzer daily on Azure DevOps agents and fails the build if the script fails. Update the service connection name and Zabbix variables before enabling.
+`.pipelines/azure-pipelines-storage-cost-analyzer.yml` targets a **self-hosted Linux agent pool** (see `pool.name`). To run it successfully:
+- Point `pool.name` to your self-hosted pool that meets the `Agent.OS -equals Linux` demand and has outbound access to your Zabbix server.
+- Ensure the agent can `sudo apt-get install zabbix-sender jq bc coreutils` (or preinstall those tools).
+- Set the Azure service connection name and Zabbix variables (`ZABBIX_SERVER`, `ZABBIX_HOST`, `SCAN_DAYS`).
+- Prefer hosted agents? Replace the entire `pool` block with `vmImage: 'ubuntu-latest'` before queuing.

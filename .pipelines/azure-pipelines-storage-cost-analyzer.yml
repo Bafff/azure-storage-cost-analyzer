@@ -23,6 +23,7 @@ schedules:
         - feature/azure-storage-cost-analyzer-migration
     always: true  # Run even if no code changes
 
+# Self-hosted Linux agent pool (update name to your pool). For hosted agents, swap this block for: `pool: { vmImage: "ubuntu-latest" }`
 pool:
   name: 'ArkadiumOnline'
   demands:
