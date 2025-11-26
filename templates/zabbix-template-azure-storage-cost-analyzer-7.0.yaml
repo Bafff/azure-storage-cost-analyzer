@@ -30,6 +30,19 @@ zabbix_export:
           --zabbix-host azure-storage-cost-analyzer
     groups:
     - name: Templates/Cloud
+    macros:
+    - macro: '{$DISK_THRESHOLD}'
+      value: '0'
+      description: Alert when unattached disk count exceeds this value
+    - macro: '{$SNAPSHOT_THRESHOLD}'
+      value: '0'
+      description: Alert when snapshot count exceeds this value
+    - macro: '{$WASTE_WARNING_THRESHOLD}'
+      value: '100'
+      description: Warning threshold for monthly waste in USD
+    - macro: '{$WASTE_CRITICAL_THRESHOLD}'
+      value: '200'
+      description: Critical threshold for monthly waste in USD
     items:
     - uuid: 915c5d50a7684913a9221dcb8fa1f565
       name: Total Monthly Waste (All Subscriptions)
@@ -49,24 +62,24 @@ zabbix_export:
         value: azure
       triggers:
       - uuid: 6a933dd06756462e979d9be2d97d2227
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>500
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_WARNING_THRESHOLD}
         name: 'High total Azure storage waste: ${ITEM.LASTVALUE}'
         priority: WARNING
         manual_close: 'YES'
         description: Total monthly storage waste across all subscriptions exceeds
-          $500
+          ${$WASTE_WARNING_THRESHOLD}
         tags:
         - tag: scope
           value: cost
         - tag: cloud
           value: azure
       - uuid: 48821f2411d24cd7bd29a7e5f826b5d3
-        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>1000
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_waste.monthly)>{$WASTE_CRITICAL_THRESHOLD}
         name: 'Critical total Azure storage waste: ${ITEM.LASTVALUE}'
         priority: AVERAGE
         manual_close: 'YES'
         description: Total monthly storage waste across all subscriptions exceeds
-          $1000
+          ${$WASTE_CRITICAL_THRESHOLD}
         tags:
         - tag: scope
           value: cost
@@ -85,6 +98,22 @@ zabbix_export:
       tags:
       - tag: component
         value: storage
+      triggers:
+      - uuid: 3b8f9a2c1d4e5f6a7b8c9d0e1f2a3b4c
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_disks)>{$DISK_THRESHOLD}
+        name: 'Unattached disks detected: {ITEM.LASTVALUE}'
+        priority: WARNING
+        manual_close: 'YES'
+        description: |
+          {ITEM.LASTVALUE} unattached disk(s) found across Azure subscriptions.
+
+          Check the Resource Details item for specific disk names and resource groups.
+          Review and either delete or attach these disks to reduce costs.
+        tags:
+        - tag: scope
+          value: storage
+        - tag: cloud
+          value: azure
     - uuid: 355eb5cadf2d4b2695bf5e8b9c01e6dc
       name: Total Snapshots Count
       type: TRAP
@@ -98,6 +127,22 @@ zabbix_export:
       tags:
       - tag: component
         value: storage
+      triggers:
+      - uuid: 4c9f0b3d2e5f6a7b8c9d0e1f2a3b4c5d
+        expression: last(/Azure Storage Cost Monitor/azure.storage.all.total_snapshots)>{$SNAPSHOT_THRESHOLD}
+        name: 'Snapshots detected: {ITEM.LASTVALUE}'
+        priority: WARNING
+        manual_close: 'YES'
+        description: |
+          {ITEM.LASTVALUE} snapshot(s) found across Azure subscriptions.
+
+          Check the Resource Details item for specific snapshot names and resource groups.
+          Review and either delete old snapshots or archive them to reduce costs.
+        tags:
+        - tag: scope
+          value: storage
+        - tag: cloud
+          value: azure
     - uuid: 88584e1c3c07489d94fc9a70ea4b1fcc
       name: Subscriptions Scanned
       type: TRAP
@@ -215,6 +260,23 @@ zabbix_export:
         tags:
         - tag: scope
           value: monitoring
+    - uuid: 5d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a
+      name: Resource Details
+      type: TRAP
+      key: azure.storage.all.resource_details
+      delay: '0'
+      history: 7d
+      trends: '0'
+      value_type: TEXT
+      description: |
+        Detailed list of unattached disks and snapshots with resource group info.
+        Format: One resource per line - "TYPE | NAME | RG | SUBSCRIPTION | SIZE_GB | COST_USD"
+        Use this item to identify specific resources when triggers fire.
+      tags:
+      - tag: component
+        value: storage
+      - tag: type
+        value: details
     valuemaps:
     - uuid: ab7c2574a348422597ada338f9098c2a
       name: Script Status

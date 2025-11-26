@@ -166,14 +166,19 @@ Script → zabbix_sender → Zabbix Trapper (10051) → Template → Triggers
 | `azure.storage.all.total_waste.monthly` | Float | 280.50 |
 | `azure.storage.all.total_disks` | Int | 12 |
 | `azure.storage.all.total_snapshots` | Int | 89 |
+| `azure.storage.all.invalid_tags` | Int | 2 |
+| `azure.storage.all.excluded_pending_review` | Int | 5 |
+| `azure.storage.all.subscriptions_scanned` | Int | 3 |
+| `azure.storage.all.resource_details` | Text | DISK \| disk-name \| RG \| ... |
 | `azure.storage.script.last_run_timestamp` | Unixtime | 1732114800 |
-| `azure.storage.subscription.waste_monthly[sub-id]` | Float | 45.60 |
+| `azure.storage.script.execution_time_seconds` | Int | 135 |
+| `azure.storage.script.last_run_status` | Int | 0 (success) |
 
 **Format (Zabbix sender):**
 ```
-azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 1732114800 280.50
-azure-storage-cost-analyzer azure.storage.all.total_disks 1732114800 12
-azure-storage-cost-analyzer azure.storage.script.last_run_timestamp 1732114800 1732114800
+azure-storage-cost-analyzer azure.storage.all.total_waste.monthly 280.50
+azure-storage-cost-analyzer azure.storage.all.total_disks 12
+azure-storage-cost-analyzer azure.storage.script.last_run_timestamp 1732114800
 ```
 
 **Send Methods:**
@@ -258,32 +263,33 @@ azure-storage-cost-analyzer azure.storage.script.last_run_timestamp 1732114800 1
 - ✅ Total Unattached Disks Count
 - ✅ Total Snapshots Count
 - ✅ Subscriptions Scanned
+- ✅ Invalid Review Tags
+- ✅ Excluded Pending Review
+- ✅ Resource Details (TEXT - disk/snapshot names and RGs)
 - ✅ Last Run Timestamp
 - ✅ Script Execution Time
 - ✅ Last Run Status
 
-### Discovery Rules
+### Template Macros
 
-**Azure Subscriptions Discovery:**
-- Key: `azure.storage.discovery.subscriptions`
-- Discovers all subscriptions dynamically
-- Creates per-subscription items automatically
-
-**Item Prototypes:**
-- `azure.storage.subscription.waste_monthly[{#SUBSCRIPTION_ID}]`
-- `azure.storage.subscription.disk_count[{#SUBSCRIPTION_ID}]`
-- `azure.storage.subscription.snapshot_count[{#SUBSCRIPTION_ID}]`
+| Macro | Default | Description |
+|-------|---------|-------------|
+| `{$DISK_THRESHOLD}` | 0 | Alert when disk count exceeds this |
+| `{$SNAPSHOT_THRESHOLD}` | 0 | Alert when snapshot count exceeds this |
+| `{$WASTE_WARNING_THRESHOLD}` | 100 | Warning threshold (USD/month) |
+| `{$WASTE_CRITICAL_THRESHOLD}` | 200 | Critical threshold (USD/month) |
 
 ### Triggers
 
 | Trigger | Severity | Condition |
 |---------|----------|-----------|
-| High total waste | Warning | > $500/month |
-| Critical total waste | High | > $1000/month |
+| Unattached disks detected | Warning | > `{$DISK_THRESHOLD}` |
+| Snapshots detected | Warning | > `{$SNAPSHOT_THRESHOLD}` |
+| High total waste | Warning | > `{$WASTE_WARNING_THRESHOLD}` |
+| Critical total waste | Average | > `{$WASTE_CRITICAL_THRESHOLD}` |
+| Invalid review tags | Warning | > 0 |
 | Script hasn't run | Average | 24 hours |
-| High subscription waste | Warning | > $100/month (per sub) |
-| Critical subscription waste | High | > $250/month (per sub) |
-| Many unattached disks | Warning | > 20 disks (per sub) |
+| Script execution failed | Warning | Status > 0 |
 
 ---
 

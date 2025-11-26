@@ -130,23 +130,45 @@ After importing, verify these items exist:
 - `azure.storage.all.subscriptions_scanned` - Number of subscriptions scanned
 - `azure.storage.all.invalid_tags` - Resources with malformed tags
 - `azure.storage.all.excluded_pending_review` - Resources pending review
+- `azure.storage.all.resource_details` - **TEXT** item with disk/snapshot names and resource groups
 
 **Script Health Items:**
 - `azure.storage.script.last_run_timestamp` - Last execution timestamp
 - `azure.storage.script.execution_time_seconds` - Script duration
 - `azure.storage.script.last_run_status` - Execution status (0=success, 1=warning, 2=error)
 
-### Step 4: Configure Triggers
+### Step 4: Configure Macros
 
-Default triggers (can be customized):
+Template macros allow you to customize thresholds without modifying triggers:
 
-| Trigger | Severity | Threshold |
-|---------|----------|-----------|
-| High total waste | Warning | $500/month |
-| Critical total waste | Average | $1000/month |
+| Macro | Default | Description |
+|-------|---------|-------------|
+| `{$DISK_THRESHOLD}` | 0 | Alert when unattached disk count exceeds this value |
+| `{$SNAPSHOT_THRESHOLD}` | 0 | Alert when snapshot count exceeds this value |
+| `{$WASTE_WARNING_THRESHOLD}` | 100 | Warning threshold for monthly waste (USD) |
+| `{$WASTE_CRITICAL_THRESHOLD}` | 200 | Critical threshold for monthly waste (USD) |
+
+To customize thresholds per-host:
+1. Navigate to: **Configuration** → **Hosts**
+2. Click on your host
+3. Go to **Macros** tab
+4. Override macro values as needed
+
+### Step 5: Configure Triggers
+
+Default triggers (thresholds controlled by macros):
+
+| Trigger | Severity | Default Threshold |
+|---------|----------|-------------------|
+| Unattached disks detected | Warning | > 0 disks (`{$DISK_THRESHOLD}`) |
+| Snapshots detected | Warning | > 0 snapshots (`{$SNAPSHOT_THRESHOLD}`) |
+| High total waste | Warning | > $100/month (`{$WASTE_WARNING_THRESHOLD}`) |
+| Critical total waste | Average | > $200/month (`{$WASTE_CRITICAL_THRESHOLD}`) |
 | Invalid review tags | Warning | Any invalid tags |
 | Script hasn't run | Average | 24 hours |
 | Script execution failed | Warning | Status > 0 |
+
+**Resource Details:** When disk or snapshot triggers fire, check the `azure.storage.all.resource_details` item for a list of affected resources with their names, resource groups, and sizes.
 
 ---
 

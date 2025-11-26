@@ -1826,6 +1826,12 @@ collect_subscription_metrics() {
         disk_details_json=$(echo "$unattached_disks_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
     fi
 
+    # Prepare snapshot details for output (escape for JSON)
+    local snapshot_details_json="[]"
+    if [[ -n "$snapshots_json" ]] && echo "$snapshots_json" | jq -e '. | length > 0' > /dev/null 2>&1; then
+        snapshot_details_json=$(echo "$snapshots_json" | jq -c '[.[] | {name: .Name, resource_group: .ResourceGroup, size_gb: .Size, sku: .Sku, created: .Created}]' 2>/dev/null || echo "[]")
+    fi
+
     # Output JSON (with defensive defaults to ensure valid JSON even if variables are empty)
     cat <<EOF
 {
@@ -1844,7 +1850,8 @@ collect_subscription_metrics() {
     "invalid_tags": ${total_invalid_tags:-0},
     "excluded_pending_review": ${total_excluded_pending:-0}
   },
-  "disk_details": ${disk_details_json:-[]}
+  "disk_details": ${disk_details_json:-[]},
+  "snapshot_details": ${snapshot_details_json:-[]}
 }
 EOF
 
@@ -2232,6 +2239,52 @@ create_zabbix_batch_file() {
     echo "$hostname azure.storage.script.last_run_timestamp $timestamp" >> "$batch_file"
     echo "$hostname azure.storage.script.execution_time_seconds $exec_duration" >> "$batch_file"
     echo "$hostname azure.storage.script.last_run_status 0" >> "$batch_file"
+
+    # Resource details (TEXT item for trigger descriptions)
+    # Format: TYPE | NAME | RG | SUBSCRIPTION | SIZE_GB
+    local resource_details=""
+
+    # Extract disk details from all subscriptions
+    local disk_details
+    disk_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.disk_details) | .disk_details[] as $d |
+             "DISK | \($d.name) | \($d.resource_group) | \(.subscription_name // .subscription_id) | \($d.size_gb)GB"]
+            | join("\n")
+        elif .disk_details then
+            [.disk_details[] | "DISK | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
+            | join("\n")
+        else ""
+        end
+    ' 2>/dev/null || echo "")
+
+    # Extract snapshot details from all subscriptions
+    local snapshot_details
+    snapshot_details=$(echo "$metrics_json" | jq -r '
+        if .by_subscription then
+            [.by_subscription[] | select(.snapshot_details) | .snapshot_details[] as $s |
+             "SNAPSHOT | \($s.name) | \($s.resource_group) | \(.subscription_name // .subscription_id) | \($s.size_gb)GB"]
+            | join("\n")
+        elif .snapshot_details then
+            [.snapshot_details[] | "SNAPSHOT | \(.name) | \(.resource_group) | N/A | \(.size_gb)GB"]
+            | join("\n")
+        else ""
+        end
+    ' 2>/dev/null || echo "")
+
+    # Combine disk and snapshot details
+    if [[ -n "$disk_details" && -n "$snapshot_details" ]]; then
+        resource_details="${disk_details}\n${snapshot_details}"
+    elif [[ -n "$disk_details" ]]; then
+        resource_details="$disk_details"
+    elif [[ -n "$snapshot_details" ]]; then
+        resource_details="$snapshot_details"
+    else
+        resource_details="No unattached disks or snapshots found"
+    fi
+
+    # Send resource details (escape for zabbix_sender - replace newlines with \n literal)
+    echo "$hostname azure.storage.all.resource_details \"$resource_details\"" >> "$batch_file"
 
     echo "$batch_file"
 }
