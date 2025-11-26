@@ -2274,7 +2274,7 @@ create_zabbix_batch_file() {
 
     # Combine disk and snapshot details
     if [[ -n "$disk_details" && -n "$snapshot_details" ]]; then
-        resource_details="${disk_details}\n${snapshot_details}"
+        resource_details="${disk_details}"$'\n'"${snapshot_details}"
     elif [[ -n "$disk_details" ]]; then
         resource_details="$disk_details"
     elif [[ -n "$snapshot_details" ]]; then
@@ -2283,8 +2283,12 @@ create_zabbix_batch_file() {
         resource_details="No unattached disks or snapshots found"
     fi
 
-    # Send resource details (escape for zabbix_sender - replace newlines with \n literal)
-    echo "$hostname azure.storage.all.resource_details \"$resource_details\"" >> "$batch_file"
+    # Escape newlines and quotes for zabbix_sender batch format (one metric per line)
+    local escaped_details
+    escaped_details=$(printf '%s' "$resource_details" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')
+
+    # Send resource details as single-line value
+    echo "$hostname azure.storage.all.resource_details \"$escaped_details\"" >> "$batch_file"
 
     echo "$batch_file"
 }
