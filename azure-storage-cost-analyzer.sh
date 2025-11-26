@@ -21,9 +21,10 @@
 set -euo pipefail
 
 # Default values
-DEFAULT_SUBSCRIPTION_ID="03d76f78-4676-4116-b53a-162546996207"
-DEFAULT_RESOURCE_GROUP="MC_internal-aks-dev-rg_internal-aks-dev_centralus"
-DEFAULT_PG_DISK="pvc-596782ff-6859-4334-992c-fa519fa2f501"
+# Default values
+# Note: Hardcoded defaults have been removed for production safety.
+# Users must provide arguments or rely on current Azure context.
+
 
 # Configuration file variables (will be populated by load_config)
 CONFIG_FILE=""
@@ -4024,7 +4025,8 @@ main() {
     # Check if $2 is a flag (starts with -) or positional parameter
     if [[ -n "${2:-}" && "${2}" != -* ]]; then
         # Legacy positional syntax: command sub_id [start_date end_date [resource_group]]
-        subscription_id="${2:-$DEFAULT_SUBSCRIPTION_ID}"
+        # Legacy positional syntax: command sub_id [start_date end_date [resource_group]]
+        subscription_id="${2:-}"
 
         if [[ -n "${3:-}" && "${3}" != -* && -n "${4:-}" && "${4}" != -* ]]; then
             start_date="${3:-}"
@@ -4035,7 +4037,8 @@ main() {
         fi
     else
         # Modern flag syntax: command [flags]
-        subscription_id="$DEFAULT_SUBSCRIPTION_ID"
+        # Modern flag syntax: command [flags]
+        subscription_id=""
         positional_count=1
     fi
 
@@ -4475,7 +4478,13 @@ main() {
 
     # Handle empty subscription ID (for single-subscription mode)
     if [[ -z "$subscription_id" && "$multi_subscription_mode" == "false" ]]; then
-        subscription_id="$DEFAULT_SUBSCRIPTION_ID"
+        # Try to get current subscription if not specified
+        subscription_id=$(az_with_timeout account show --query 'id' -o tsv 2>/dev/null)
+        if [[ -z "$subscription_id" ]]; then
+             echo "Error: No subscription ID specified and unable to detect current subscription."
+             echo "Please specify --subscriptions <id> or 'all', or run 'az login'."
+             exit $EXIT_CONFIG_ERROR
+        fi
     fi
 
     # Check Azure login

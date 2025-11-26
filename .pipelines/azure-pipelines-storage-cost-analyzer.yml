@@ -37,6 +37,8 @@ variables:
     value: 30  # Analyze last 30 days
   - name: OUTPUT_DIR
     value: '$(Build.ArtifactStagingDirectory)/reports'
+  - name: AZURE_SERVICE_CONNECTION
+    value: 'zabbix' # Default value, override in pipeline settings
 
 stages:
   - stage: Analyze
@@ -81,7 +83,7 @@ stages:
               # NOTE: This is your Azure DevOps SERVICE CONNECTION name (NOT an Azure subscription ID)
               # The script will scan ALL Azure subscriptions that this service connection has access to
               # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
-              azureSubscription: 'zabbix'  # ⚠️ UPDATE THIS to your service connection name
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
               scriptLocation: 'scriptPath'
               scriptPath: '$(Build.SourcesDirectory)/azure-storage-cost-analyzer.sh'
