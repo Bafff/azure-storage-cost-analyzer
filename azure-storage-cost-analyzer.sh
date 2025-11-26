@@ -2214,17 +2214,23 @@ create_zabbix_batch_file() {
     local total_waste=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_waste_monthly_usd // .metrics.total_waste_monthly // 0')
     local total_disks=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_unattached_disks // .metrics.unattached_disks_count // 0')
     local total_snapshots=$(echo "$metrics_json" | jq -r '.aggregated_metrics.total_snapshots // .metrics.snapshots_count // 0')
+    local invalid_tags=$(echo "$metrics_json" | jq -r '.aggregated_metrics.invalid_tags // 0')
+    local excluded_pending=$(echo "$metrics_json" | jq -r '.aggregated_metrics.excluded_pending_review // 0')
 
     echo "$hostname azure.storage.all.total_waste.monthly $total_waste" >> "$batch_file"
     echo "$hostname azure.storage.all.total_disks $total_disks" >> "$batch_file"
     echo "$hostname azure.storage.all.total_snapshots $total_snapshots" >> "$batch_file"
+    echo "$hostname azure.storage.all.invalid_tags $invalid_tags" >> "$batch_file"
+    echo "$hostname azure.storage.all.excluded_pending_review $excluded_pending" >> "$batch_file"
 
     # Subscriptions scanned count
     local sub_count=$(echo "$metrics_json" | jq '.by_subscription | length // 0')
     echo "$hostname azure.storage.all.subscriptions_scanned $sub_count" >> "$batch_file"
 
     # Script health metrics
+    local exec_duration=$(echo "$metrics_json" | jq -r '.execution.duration_seconds // 0')
     echo "$hostname azure.storage.script.last_run_timestamp $timestamp" >> "$batch_file"
+    echo "$hostname azure.storage.script.execution_time_seconds $exec_duration" >> "$batch_file"
     echo "$hostname azure.storage.script.last_run_status 0" >> "$batch_file"
 
     echo "$batch_file"
