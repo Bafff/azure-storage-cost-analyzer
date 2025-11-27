@@ -85,6 +85,7 @@ stages:
               # NOTE: This is your Azure DevOps SERVICE CONNECTION name (NOT an Azure subscription ID)
               # The script will scan ALL Azure subscriptions that this service connection has access to
               # To create: Project Settings → Service connections → New service connection → Azure Resource Manager
+              # EXCLUDE_RESOURCE_GROUPS comes from variable group 'azure-storage-cost-analyzer'
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'  # ⚠️ UPDATE THIS to your service connection name
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
