@@ -30,15 +30,13 @@ pool:
     - Agent.OS -equals Linux
 
 variables:
-  - group: zabbix-rs-credentials  # Contains: ZABBIX_SERVER, optionally EXCLUDE_RESOURCE_GROUPS
+  - group: azure-storage-cost-analyzer  # Contains: ZABBIX_SERVER, optionally EXCLUDE_RESOURCE_GROUPS
   - name: ZABBIX_HOST
     value: 'azure-storage-cost-analyzer'
   - name: SCAN_DAYS
     value: 30  # Analyze last 30 days
   - name: AZURE_SERVICE_CONNECTION
     value: 'zabbix'
-  - name: EXCLUDE_RESOURCE_GROUPS
-    value: 'no-rg-excluded'  # Dummy default, override in variable group with real RG names
   - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS
     value: 7  # Disks older than this in excluded RGs will still be reported
   - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS
@@ -102,6 +100,7 @@ stages:
                   --zabbix-server $(ZABBIX_SERVER) \
                   --zabbix-host $(ZABBIX_HOST) \
                   --zabbix-port 10051 \
+                  # EXCLUDE_RESOURCE_GROUPS provided by variable group 'azure-storage-cost-analyzer'
                   --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \
                   --exclude-rg-age-threshold-days-disks $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS) \
                   --exclude-rg-age-threshold-days-snapshots $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS) \
