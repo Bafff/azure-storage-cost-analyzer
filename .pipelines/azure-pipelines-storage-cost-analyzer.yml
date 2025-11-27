@@ -100,8 +100,7 @@ stages:
                   --zabbix-server $(ZABBIX_SERVER) \
                   --zabbix-host $(ZABBIX_HOST) \
                   --zabbix-port 10051 \
-                  # EXCLUDE_RESOURCE_GROUPS provided by variable group 'azure-storage-cost-analyzer'
-                  --exclude-resource-groups $(EXCLUDE_RESOURCE_GROUPS) \
+                  --exclude-resource-groups "$(EXCLUDE_RESOURCE_GROUPS)" \
                   --exclude-rg-age-threshold-days-disks $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS) \
                   --exclude-rg-age-threshold-days-snapshots $(EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS) \
                   --quiet
