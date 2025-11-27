@@ -15,12 +15,11 @@ name: Azure-Storage-Cost-Analyzer-$(Date:yyyyMMdd)-$(Rev:r)
 trigger: none  # Disable CI triggers (manual or scheduled only)
 
 schedules:
-  - cron: "44 5 * * *"  # Daily at 5:44 AM UTC
+  - cron: "35 2 * * *"  # Daily at 2:35 AM UTC
     displayName: 'Daily Storage Cost Analysis'
     branches:
       include:
         - main
-        - develop
     always: true  # Run even if no code changes
 
 # Self-hosted Linux agent pool (update name to your pool). For hosted agents, swap this block for: `pool: { vmImage: "ubuntu-latest" }`
