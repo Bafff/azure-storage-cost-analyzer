@@ -42,8 +42,8 @@ Use when snapshot counts are reasonable (<50); large snapshot sets will take lon
   --exclude-rgs "databricks-rg,temp-rg,velero-backup-rg"
 ```
 
-Resources in excluded RGs younger than 60 days are excluded from alerts.
-Resources older than 60 days are included as potential anomalies.
+Resources in excluded RGs younger than 30 days are excluded from alerts.
+Resources older than 30 days are included as potential anomalies.
 
 ## Enable Cost Management Validation
 ```bash
@@ -58,5 +58,5 @@ Resources older than 60 days are included as potential anomalies.
 - Replace `<SUBSCRIPTION_ID>` with your target subscription or use `all` for all accessible subscriptions.
 - For Zabbix sending, add `--zabbix-send --zabbix-server <host> --zabbix-host azure-storage-cost-analyzer`.
 - Tag-based exclusion: set `Resource-Next-Review-Date=YYYY.MM.DD` on a disk/snapshot to suppress alerts until that date (use `--skip-tagged` flag).
-- RG exclusion: use `--exclude-rgs "rg1,rg2"` to exclude ephemeral resource groups (default 60-day age threshold).
+- RG exclusion: use `--exclude-rgs "rg1,rg2"` to exclude ephemeral resource groups (default 30-day age threshold for snapshots, 7-day for disks).
 - Works on both Linux and macOS (bash 3.2+ compatible).

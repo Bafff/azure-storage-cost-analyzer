@@ -102,25 +102,25 @@ exclude_rg_age_threshold_days_disks = 7
 
 # Age threshold for snapshots - snapshots older than this will be included
 # even if they're in an excluded resource group (anomaly detection)
-# Default: 60 days (snapshots typically have longer lifecycles than disks)
-exclude_rg_age_threshold_days_snapshots = 60
+# Default: 30 days
+exclude_rg_age_threshold_days_snapshots = 30
 
 # Use Case Example:
 # Databricks creates/deletes disks regularly as part of normal operations.
 # These ephemeral disks are typically short-lived (hours/days).
-# However, if a disk is > 7 days old or a snapshot is > 60 days old,
+# However, if a disk is > 7 days old or a snapshot is > 30 days old,
 # it's likely orphaned/stuck and needs attention.
 #
 # Example configuration for Databricks:
 #   exclude_resource_groups = databricks-managed-rg,databricks-compute-rg
 #   exclude_rg_age_threshold_days_disks = 7
-#   exclude_rg_age_threshold_days_snapshots = 60
+#   exclude_rg_age_threshold_days_snapshots = 30
 #
 # Result:
 #   - Databricks disks < 7 days old: EXCLUDED from alerts (normal operation)
 #   - Databricks disks >= 7 days old: INCLUDED in alerts (potential issue)
-#   - Databricks snapshots < 60 days old: EXCLUDED from alerts
-#   - Databricks snapshots >= 60 days old: INCLUDED in alerts (potential issue)
+#   - Databricks snapshots < 30 days old: EXCLUDED from alerts
+#   - Databricks snapshots >= 30 days old: INCLUDED in alerts (potential issue)
 #   - All other RG resources: INCLUDED normally
 
 # ============================================================================

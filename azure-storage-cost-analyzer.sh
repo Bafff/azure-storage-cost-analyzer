@@ -1759,7 +1759,7 @@ collect_subscription_metrics() {
             "$effective_skip_tagged" \
             "false" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_count=$(echo "$filtered_result" | jq -r '.stats.included' 2>/dev/null || echo "0")
@@ -3625,7 +3625,7 @@ generate_unused_resources_report() {
             "$skip_tagged" \
             "$show_tagged_only" \
             "$exclude_rgs" \
-            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS:-7}}" 2>/dev/null)
+            "${CONFIG_EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS:-30}" 2>/dev/null)
 
         snapshots_json=$(echo "$filtered_result" | jq -r '.resources' 2>/dev/null)
         snapshot_tag_filter_stats="$filtered_result"

@@ -39,7 +39,7 @@ variables:
   - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_DISKS
     value: 7  # Disks older than this in excluded RGs will still be reported
   - name: EXCLUDE_RG_AGE_THRESHOLD_DAYS_SNAPSHOTS
-    value: 60  # Snapshots have longer lifecycle, use higher threshold
+    value: 30  # Snapshots age threshold (configurable, default: 30 days)
 
 stages:
   - stage: Analyze
